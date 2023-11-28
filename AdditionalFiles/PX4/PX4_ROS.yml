@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  px4-dev-ros:
+    image: njbrown09/lm01-drone-sar:latest
+    container_name: px4_ros_container
+    privileged: true
+    stdin_open: true
+    tty: true
+    environment:
+      - PX4_HOME_LAT=42.3898
+      - PX4_HOME_LON=-71.1476
+      - PX4_HOME_ALT=14.2
+      - PX4_SIM_HOST_ADDR=172.23.0.1
+      - DISPLAY=:0
+    volumes:
+      - /mnt/c/Users/Admin/Documents/Colosseum/PX4/PX4-Autopilot:/src/PX4-Autopilot:rw
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+    ports:
+      - "14570:14570/udp"
+      - "5760:5760/tcp"
+    networks:
+      - px4_network
+
+networks:
+  px4_network:
+    driver: bridge
