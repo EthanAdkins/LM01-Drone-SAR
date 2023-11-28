@@ -57,4 +57,5 @@ RUN pip3 install mavproxy
 COPY entrypoint.sh /
 RUN chmod +x /entrypoint.sh
 RUN ls -l /
-ENTRYPOINT /entrypoint.sh ${PX4_SIM_HOST_ADDR}
+ENTRYPOINT /entrypoint.sh ${PX4_SIM_HOST_ADDR} ${MAVLINK_TCP_PORT} ${MAVLINK_UDP_PORT} ${MAVLINK_ID}
+ 
