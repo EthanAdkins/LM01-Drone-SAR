@@ -12,6 +12,7 @@ services:
       - PX4_HOME_ALT=14.2
       - PX4_INSTANCE=0
       - PX4_SIM_HOST_ADDR=172.23.0.1
+      - PX4_COMPILE=false
       - DISPLAY=:0
     volumes:
       - /mnt/c/Users/Admin/Documents/Colosseum/PX4/PX4-Autopilot:/src/PX4-Autopilot:rw
@@ -32,6 +33,7 @@ services:
       - PX4_HOME_LON=-71.1476
       - PX4_HOME_ALT=14.2
       - PX4_INSTANCE=1
+      - PX4_COMPILE=false
       - PX4_SIM_HOST_ADDR=172.23.0.1
       - DISPLAY=:0
     volumes:
@@ -53,6 +55,7 @@ services:
       - PX4_HOME_LON=-71.1476
       - PX4_HOME_ALT=14.2
       - PX4_INSTANCE=2
+      - PX4_COMPILE=false
       - PX4_SIM_HOST_ADDR=172.23.0.1
       - DISPLAY=:0
     volumes:

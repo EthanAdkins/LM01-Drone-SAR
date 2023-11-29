@@ -53,6 +53,7 @@ RUN apt-get install -y python3-dev python-wxgtk3.0 python3-pip python3-matplotli
 RUN pip3 install --upgrade pip
 RUN pip3 install mavproxy
 
+
 # Entrypoint
 COPY entrypoint.sh /
 RUN chmod +x /entrypoint.sh
