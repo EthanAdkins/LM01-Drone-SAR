@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# Ensure the script is run with sudo
-if [ "$(id -u)" != "0" ]; then
-   echo -e "\e[1;31mThis script must be run as root (use sudo).\e[0m" 1>&2
-   #exit 1
-fi
-
 # Install QGroundControl dependencies:
 sudo usermod -a -G dialout $USER
 sudo apt-get remove modemmanager -y
