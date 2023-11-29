@@ -57,4 +57,4 @@ RUN pip3 install mavproxy
 COPY entrypoint.sh /
 RUN chmod +x /entrypoint.sh
 RUN ls -l /
-ENTRYPOINT /entrypoint.sh ${PX4_SIM_HOST_ADDR}
+ENTRYPOINT /entrypoint.sh ${PX4_SIM_HOST_ADDR} ${PX4_INSTANCE}
