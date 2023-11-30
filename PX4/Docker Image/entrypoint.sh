@@ -23,10 +23,4 @@ popd &>/dev/null
 echo "Compiling manually"
 cd /src/PX4-Autopilot
 
-#make px4_sitl_default none_iris
-
-#python3 /usr/local/bin/mavproxy.py --daemon --master=udpin:127.0.0.1:14550 --out=tcpin:0.0.0.0:4560 2>&1 > /dev/null &
-# ./PX4-Autopilot/build/px4_sitl_default/bin/px4 -i 0 -d "/home/nick/PX4-Autopilot/build/px4_sitl_default/etc"
-# 
-# python3 /usr/local/bin/mavproxy.py --daemon --master=udpin:127.0.0.1:14550 --out=tcpin:0.0.0.0:4561 2>&1 > /dev/null &
-# ./PX4-Autopilot/build/px4_sitl_default/bin/px4 -i 1 -d "/home/nick/PX4-Autopilot/build/px4_sitl_default/etc"
+make px4_sitl_default none_iris

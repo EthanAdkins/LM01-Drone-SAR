@@ -11,7 +11,7 @@ git clone https://github.com/PX4/PX4-Autopilot.git --recursive
 
 # Install PX4 Dependencies
 echo -e "\e[1;34mInstalling PX4 dependencies...\e[0m"
-bash ./PX4-Autopilot/Tools/setup/ubuntu.sh --no-nuttx
+bash ./PX4-Autopilot/Tools/setup/ubuntu.sh --no-nuttx --no-simulation
 
 # Output message
 echo -e "\e[1;32mPX4 Successfully Installed.\e[0m"

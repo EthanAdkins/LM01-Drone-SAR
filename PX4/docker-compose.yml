@@ -14,7 +14,7 @@ services:
       - PX4_SIM_HOST_ADDR=172.23.0.1
       - DISPLAY=:0
     volumes:
-      - /home/nick/PX4-Autopilot:/src/PX4-Autopilot:rw
+      - /mnt/c/Users/Admin/Documents/Colosseum/PythonClient/multirotor/test/PX4/src/PX4-Autopilot:/src/PX4-Autopilot:rw
       - /tmp/.X11-unix:/tmp/.X11-unix:ro
     ports:
       - "14570:14570/udp"
@@ -35,7 +35,7 @@ services:
       - PX4_SIM_HOST_ADDR=172.23.0.1
       - DISPLAY=:0
     volumes:
-      - /home/nick/PX4-Autopilot:/src/PX4-Autopilot:rw
+      - /mnt/c/Users/Admin/Documents/Colosseum/PythonClient/multirotor/test/PX4/src/PX4-Autopilot:/src/PX4-Autopilot:rw
       - /tmp/.X11-unix:/tmp/.X11-unix:ro
     ports:
       - "14571:14571/udp"
@@ -56,7 +56,7 @@ services:
       - PX4_SIM_HOST_ADDR=172.23.0.1
       - DISPLAY=:0
     volumes:
-      - /home/nick/PX4-Autopilot:/src/PX4-Autopilot:rw
+      - /mnt/c/Users/Admin/Documents/Colosseum/PythonClient/multirotor/test/PX4/src/PX4-Autopilot:/src/PX4-Autopilot:rw
       - /tmp/.X11-unix:/tmp/.X11-unix:ro
     ports:
       - "14572:14572/udp"
