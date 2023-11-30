@@ -22,48 +22,6 @@ services:
     networks:
       - px4_network
 
-  px4-dev-ros-2:
-    image: njbrown09/lm01-drone-sar:latest
-    privileged: true
-    stdin_open: true
-    tty: true
-    environment:
-      - PX4_HOME_LAT=42.3898
-      - PX4_HOME_LON=-71.1476
-      - PX4_HOME_ALT=14.2
-      - PX4_INSTANCE=1
-      - PX4_SIM_HOST_ADDR=172.23.0.1
-      - DISPLAY=:0
-    volumes:
-      - /mnt/c/Users/Admin/Documents/Colosseum/PythonClient/multirotor/test/PX4/PX4-Autopilot:/src/PX4-Autopilot:rw
-      - /tmp/.X11-unix:/tmp/.X11-unix:ro
-    ports:
-      - "14572:14572/udp"
-      - "5762:5762/tcp"
-    networks:
-      - px4_network
-
-  px4-dev-ros-3:
-    image: njbrown09/lm01-drone-sar:latest
-    privileged: true
-    stdin_open: true
-    tty: true
-    environment:
-      - PX4_HOME_LAT=42.3898
-      - PX4_HOME_LON=-71.1476
-      - PX4_HOME_ALT=14.2
-      - PX4_INSTANCE=2
-      - PX4_SIM_HOST_ADDR=172.23.0.1
-      - DISPLAY=:0
-    volumes:
-      - /mnt/c/Users/Admin/Documents/Colosseum/PythonClient/multirotor/test/PX4/PX4-Autopilot:/src/PX4-Autopilot:rw
-      - /tmp/.X11-unix:/tmp/.X11-unix:ro
-    ports:
-      - "14573:14573/udp"
-      - "5763:5763/tcp"
-    networks:
-      - px4_network
-
 networks:
   px4_network:
     driver: bridge
