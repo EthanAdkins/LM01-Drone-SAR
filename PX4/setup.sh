@@ -8,7 +8,7 @@ git clone https://github.com/PX4/PX4-Autopilot.git --recursive
 
 # Install PX4 Dependencies
 echo -e "\e[1;34mInstalling PX4 dependencies...\e[0m"
-bash ./PX4-Autopilot/Tools/setup/ubuntu.sh --no-nuttx --no-sim-tools
+bash ./PX4-Autopilot/Tools/setup/ubuntu.sh --no-nuttx
 
 # Compile PX4 without running
 echo -e "\e[1;34mCompiling PX4... This can take up to an hour.\e[0m"
