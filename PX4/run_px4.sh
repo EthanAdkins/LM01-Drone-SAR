@@ -2,6 +2,7 @@
 
 # Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PX4_PATH = ~/PX4-Autopilot
 
 # Function to ask user for the number of containers with a maximum limit of 10
 ask_for_container_count() {
@@ -30,8 +31,8 @@ EOF
 # Function to generate container configuration
 generate_container_config() {
     local container_number=$1
-    local udp_port=$((14570 + container_number))
-    local tcp_port=$((5760 + container_number))
+    local udp_port=$((14570 + container_number - 1))
+    local tcp_port=$((5760 + container_number - 1))
     local instance=$((container_number - 1))
 
     cat <<EOF
@@ -48,7 +49,7 @@ generate_container_config() {
       - PX4_SIM_HOST_ADDR=172.23.0.1
       - DISPLAY=:0
     volumes:
-      - ${SCRIPT_DIR}/PX4-Autopilot:/src/PX4-Autopilot:rw
+      - /home/nick/PX4-Autopilot:/src/PX4-Autopilot:rw
       - /tmp/.X11-unix:/tmp/.X11-unix:ro
     ports:
       - "$udp_port:$udp_port/udp"
