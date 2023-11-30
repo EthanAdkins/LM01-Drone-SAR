@@ -3,6 +3,7 @@
 sudo apt-get update
 
 # Clone PX4
+cd ~
 echo -e "\e[1;34mCloning PX4 Autopilot repository...\e[0m"
 git clone https://github.com/PX4/PX4-Autopilot.git --recursive
 
