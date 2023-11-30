@@ -40,7 +40,7 @@ generate_container_config() {
     local instance=$((container_number - 1))
 
     cat <<EOF
-  px4-dev-ros-$container_number:
+  px4-ros-$container_number:
     image: njbrown09/lm01-drone-sar:latest
     privileged: true
     stdin_open: true
