@@ -3,7 +3,6 @@
 sudo apt-get update
 
 # Clone PX4
-cd ~
 mkdir src
 cd src
 echo -e "\e[1;34mCloning PX4 Autopilot repository...\e[0m"
