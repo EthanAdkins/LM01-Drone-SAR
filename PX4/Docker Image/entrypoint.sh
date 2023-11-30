@@ -23,4 +23,4 @@ popd &>/dev/null
 echo "Compiling manually"
 cd /src/PX4-Autopilot
 
-make px4_sitl_default none_iris
+#make px4_sitl_default none_iris

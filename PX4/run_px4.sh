@@ -3,7 +3,7 @@
 # Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 #PX4_PATH="$SCRIPT_DIR/src/PX4-Autopilot"
-PX4_PATH="~/PX4-Autopilot"
+PX4_PATH="/home/nick/PX4-Autopilot"
 
 #Log the path
 echo 'PX4 Path:'
