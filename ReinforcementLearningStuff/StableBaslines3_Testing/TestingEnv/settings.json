@@ -1,0 +1,30 @@
+{
+  "SeeDocsAt": "https://github.com/Microsoft/AirSim/blob/master/docs/settings_json.md",
+  "SettingsVersion": 1.2,
+  "SimMode": "Multirotor",
+  "ClockSpeed": 3,
+  "Recording": {
+    "RecordOnMove": false,
+    "RecordInterval": 0.3,
+    "Folder": "C://Users//andre//Desktop//ThesisUnReal//TestImages2",
+    "Enabled": false,
+    "Cameras": [
+      {
+        "CameraName": "0",
+        "ImageType": 1,
+        "PixelsAsFloat": true,
+        "Compress": true
+      }
+    ]
+  },
+  "CameraDefaults": {
+    "CaptureSettings": [
+      {
+        "ImageType": 1,
+        "Width": 150,
+        "Height": 150,
+        "FOV_Degrees": 90
+      }
+    ]
+  }
+}
