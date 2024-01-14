@@ -1,3 +1,5 @@
-Directory
-Code = contains the actual code for RL
-TestingEnv = contains stuff to make sure the environment you have is working for RL testing
+<!-- GETTING STARTED -->
+## RL FUN STUFF
+Directory:
+* Code = contains RL code
+* TestingEnv = contains stuff you need for your RL testing environment (settings.json config for AirSim and conda env files)
