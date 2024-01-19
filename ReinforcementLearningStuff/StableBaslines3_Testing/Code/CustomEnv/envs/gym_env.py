@@ -1,8 +1,10 @@
 import airsim
 import numpy as np
 import os
-import gym
-from gym import spaces
+# import gym
+# from gym import spaces
+import gymnasium
+from gymnasium import spaces
 from PIL import Image, ImageStat
 from matplotlib import pyplot as plt
 import time
@@ -22,8 +24,8 @@ rewardConfig = {
 }
 
 TIME = 1
-
-class drone_env(gym.Env):
+'''Static Environment for DQN: id=airsim-drone-v0'''
+class drone_env(gymnasium.Env):
     def __init__(self):
         super(drone_env, self).__init__()
         self.max_timestep= 500 
@@ -46,8 +48,8 @@ class drone_env(gym.Env):
         self.observation_space = spaces.Dict({
             "image": spaces.Box(0, 255, shape=(self.img_height, self.img_width, 1), dtype=np.uint8),
             "velocity": spaces.Box(low=np.array([-np.inf for _ in range(3)]), 
-                                   high=np.array([np.inf for _ in range(3)]),
-                                   dtype=np.float64),
+                                    high=np.array([np.inf for _ in range(3)]),
+                                    dtype=np.float64),
             "prev_relative_distance": spaces.Box(low=np.array([-np.inf for _ in range(3)]), 
                                             high=np.array([np.inf for _ in range(3)]),
                                             dtype=np.float64),
@@ -55,8 +57,8 @@ class drone_env(gym.Env):
                                             high=np.array([np.inf for _ in range(3)]),
                                             dtype=np.float64),
             "action_history": spaces.Box(low=np.array([-1 for _ in range(10)]), 
-                                   high=np.array([5 for _ in range(10)]),
-                                  dtype=np.int8)
+                                    high=np.array([5 for _ in range(10)]),
+                                    dtype=np.int8)
             })
 
         # -- set internally state and info --
@@ -163,8 +165,8 @@ F
 
         dist = np.linalg.norm(self.info["position"]-self.goal_position)
         prev_dist = np.linalg.norm(self.info["prev_position"]-self.goal_position)
-        #print(dist)
-        #print(prev_dist)
+        print("current distance from goal: " + str(dist))
+        print("previous distance from goal: " + str(prev_dist))
        
         return dist, prev_dist
     
@@ -214,7 +216,7 @@ F
             reward = rewardConfig['timed']
             done = True
 
-        #print("Final reward: "+str(reward))
+        print("Final reward: "+str(reward))
 
         return reward, done
     
@@ -224,12 +226,15 @@ F
 
         self.doAction(chosenAction)
         
-        obs = self.getObservation(chosenAction)
+        # obs = self.getObservation(chosenAction)
+        obsAq = self.getObservation(chosenAction)
+        obs = obsAq[0]
 
-        reward, done = self.calculateReward(chosenAction)
+        # reward, done = self.calculateReward(chosenAction)
+        reward, terminated = self.calculateReward(chosenAction)
 
         #  -- Sometimes image bounces over obstacles once collision triggers --
-        if done:
+        if terminated:
            mean1 = np.mean(self.state["image"])
            mean2 = np.mean(self.info["prev_image"])
 
@@ -238,7 +243,8 @@ F
 
         info = self.info
 
-        return obs, reward, done, info
+        # return obs, reward, done, info
+        return obs, reward, terminated, False, info
 
     def reset(self, seed=None, options=None):
         if seed is not None:
@@ -287,20 +293,21 @@ F
         self.drone.enableApiControl(True)
         self.drone.armDisarm(True) 
 
-        #print("System update: Drone has successfully been reset")
+        print("System update: Drone has successfully been reset")
         self.drone.startRecording()
         self.drone.moveByVelocityAsync(0, 0, 0, 10).join()
         self.drone.stopRecording()
         
 
     def getImageObs(self):
-        my_path = "C:/Users/User/Desktop/ThesisUnReal/TestImages2/"
+        my_path = "C:/Users/andre/Desktop/ThesisUnReal/TestImages2/"
         isExist = os.path.exists(my_path)
 
         if not isExist:
             os.makedirs(my_path)
 
         files = glob.glob(my_path + "*")
+        print(files)
 
         imagelocation = files[0] + "/images/"
         mytime = 0
@@ -416,7 +423,11 @@ F
         ah = ah[:-1]
         self.state["action_history"] = ah
     
-        return self.state
+        # return self.state
+        obs = self.state
+        info = self.info
+
+        return obs, info
     
     def disconnect(self):
         self.drone.enableApiControl(False)

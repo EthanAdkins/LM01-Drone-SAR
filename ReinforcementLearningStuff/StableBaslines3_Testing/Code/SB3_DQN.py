@@ -110,7 +110,11 @@ policy_kwargs = dict(
         )
 
 # check_env(gymnasium.make("airsim-drone-dynamic-v0"))
-env = DummyVecEnv([lambda: Monitor(gymnasium.make("airsim-drone-dynamic-v0"))])
+# from CustomEnv.envs.gym_env_dynamic import drone_env_dynamic
+'''For dynamic environment'''
+# env = DummyVecEnv([lambda: Monitor(gymnasium.make("airsim-drone-dynamic-v0"))])
+'''Fpr static environment'''
+env = DummyVecEnv([lambda: Monitor(gymnasium.make("airsim-drone-v0"))])
 env = VecTransposeImage(env)
 
 
@@ -179,9 +183,9 @@ model.learn(
     
 model.save(f"{models_dir}/{TIMESTEPS}")
 
-# vec_env = model.get_env()
-# obs = vec_env.reset()
-# model.predict(obs)
+vec_env = model.get_env()
+obs = vec_env.reset()
+model.predict(obs)
 
-# env.reset()
+env.reset()
 # env.disconnect()

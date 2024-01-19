@@ -22,7 +22,7 @@ rewardConfig = {
 }
 
 TIME = 1
-
+'''Dynamic Environment for DQN: airsim-drone-dynamic-v0'''
 class drone_env_dynamic(gymnasium.Env):
     def __init__(self):
         super(drone_env_dynamic, self).__init__()
