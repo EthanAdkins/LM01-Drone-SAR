@@ -16,7 +16,11 @@ Before running the code, make sure that:
 
 ### How to run the code
 1. Get your AirSim running first and click play to spawn a drone!
-2. In your terminal, make sure you are in the same directory where the file is. If you want to run a DQN training, do
+2. In your terminal, make sure you are in the same directory where the file is. To get the tensorboard running, run:
+   ```sh
+   python -m tensorboard.main --logdir=logs
+   ```
+3. In your terminal, make sure you are in the same directory where the file is. If you want to run a DQN training, do
    ```sh
    python ./SB3_DQN.py
    ```
