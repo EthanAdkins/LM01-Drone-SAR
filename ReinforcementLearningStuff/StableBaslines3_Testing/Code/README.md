@@ -6,7 +6,9 @@ Most of the stuff here I (Andrei) have not touched yet, but this directory conta
 ### P.S. Some files are still outdated!
 Some of the files here use deprecated functions. The files that have been updated to be compatible with libraries are:
 - SB3_DQN.py
+- SB3_ModelTesting.py
 - gym_env_dynamic.py (this is a custom env, do not run directly)
+- gym_env.py (this is a custom env, do not run directly)
 
 ### Prerequisites
 
