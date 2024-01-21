@@ -158,7 +158,7 @@ stop_train_callback = StopTrainingOnNoModelImprovement(
 
 eval_callback = EvalCallback(
     env,
-    #callback_on_new_best=True,
+    callback_on_new_best=True,
     n_eval_episodes=5,
     callback_after_eval=stop_train_callback,
     best_model_save_path="./CheckPoints/DQN/BestModel/",

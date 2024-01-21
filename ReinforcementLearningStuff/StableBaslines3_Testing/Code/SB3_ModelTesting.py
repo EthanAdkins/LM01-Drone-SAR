@@ -1,7 +1,7 @@
 import numpy as np
 from stable_baselines3 import DQN
 from stable_baselines3 import PPO
-from sb3_contrib import TRPO
+# from sb3_contrib import TRPO
 
 import CustomEnv
 import gymnasium as gym
@@ -22,12 +22,13 @@ env = VecTransposeImage(env)
 # path = "C:/Users/User/Desktop/ThesisUnReal/CheckPoints/PPO/BestModel/Best-Model-PPO-StaticFinal/"
 #path = "C:/Users/User/Desktop/ThesisUnReal/CheckPoints/DQN/BestModel/Best-Model-DQN-FinalDynamic/"
 # path = "C:/Users/User/Desktop/ThesisUnReal/CheckPoints/TRPO/BestModel/Best-Model-TRPO-StaticFinal/"
-path = "C:/Users/andre/Desktop/ThesisUnReal/Best-Model-DQN-FinalStatic"
+path = "C:/Users/andre/Documents/GitHub/LM01-Drone-SAR/ReinforcementLearningStuff/StableBaslines3_Testing/Code/CheckPoints/DQN/BestModel_PT/Best-Model-DQN-FinalStatic/"
+# path = "C:/Users/andre/Documents/GitHub/LM01-Drone-SAR/ReinforcementLearningStuff/StableBaslines3_Testing/Code/CheckPoints/DQN/BestModel/"
 
 # Load the saved model parameters
-#model = DQN.load(path + 'best_model.zip')
+model = DQN.load(path + 'best_model.zip')
 #model = PPO.load(path + 'best_model.zip')
-model = TRPO.load(path + 'best_model.zip')
+# model = TRPO.load(path + 'best_model.zip')
 runs = 100
 # Use the model to make predictions
 goal = 0
@@ -38,6 +39,7 @@ for ep in range(runs):
     while not done:
         action, _ = model.predict(obs, deterministic=True)
         obs, reward, done, info = env.step(action)
+        # print(info)
         if info[0]['goalreached'] == True:
             goal += 1
 
