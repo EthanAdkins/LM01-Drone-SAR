@@ -165,8 +165,8 @@ F
 
         dist = np.linalg.norm(self.info["position"]-self.goal_position)
         prev_dist = np.linalg.norm(self.info["prev_position"]-self.goal_position)
-        print("current distance from goal: " + str(dist))
-        print("previous distance from goal: " + str(prev_dist))
+        # print("current distance from goal: " + str(dist))
+        # print("previous distance from goal: " + str(prev_dist))
        
         return dist, prev_dist
     
@@ -307,9 +307,15 @@ F
             os.makedirs(my_path)
 
         files = glob.glob(my_path + "*")
-        print(files)
+        # print(files)
 
         imagelocation = files[0] + "/images/"
+
+        imageChangedlocation = files[0] + "/imagesChanged/"
+        isExist = os.path.exists(imageChangedlocation)
+        if not isExist:
+            os.makedirs(imageChangedlocation)
+
         mytime = 0
         start_time2 = time.time()
         while(True):
@@ -323,6 +329,7 @@ F
                     break
 
         imageL = glob.glob(imagelocation + "*")
+        # print(imageL)
         imageL.sort(key=os.path.getmtime)
 
         num = 0
@@ -351,12 +358,14 @@ F
             image = image.rotate(180)
             image = image.transpose(method=Image.Transpose.FLIP_LEFT_RIGHT)
 
-            #image_path = "TestImages"
+            # image_path = "TestImages"
+            image_path = imageChangedlocation
 
             im_final = np.array(image.resize((150, 150)).convert("L"))
             
             im_final = im_final.reshape([150, 150, 1])
-            #airsim.write_png(os.path.normpath(f'{image_path}/imageChanged{num}.png'), im_final)
+            airsim.write_png(os.path.normpath(f'{image_path}/imageChanged{num}.png'), im_final)
+            # print(os.path.normpath(f'{image_path}/imageChanged{num}.png'))
             num+=1
 
         folder = my_path
@@ -390,7 +399,9 @@ F
 
         self.drone.simPause(True)
         image = self.getImageObs()
-        image_path = "TestImages"
+        # image_path = "TestImages2"
+        image_path = "C:/Users/andre/Desktop/ThesisUnReal/TestImages2/"
+
         airsim.write_png(os.path.normpath(f'{image_path}/imageChanged.png'), image)
         self.info["prev_image"] = self.state["image"] 
         self.state["image"] = image
