@@ -14,7 +14,7 @@ Before running the code, make sure that:
 * You have the settings.json configured similar to the one in TestingEnv
 * Your conda environment is compatible with the codebase (check TestingEnv)
 
-### How to run the code
+### How to run the code (training the model)
 1. Get your AirSim running first and click play to spawn a drone!
 2. In your terminal, make sure you are in the same directory where the file is. To get the tensorboard running, run:
    ```sh
@@ -25,3 +25,12 @@ Before running the code, make sure that:
    python ./SB3_DQN.py
    ```
 
+### How to run the code (testing trained model)
+1. Get your AirSim running first and click play to spawn a drone!
+2. In SB3_ModelTesting.py, make sure the right environment is selected for testing (is it for continuous or discrete? static or dynamic?)
+3. In SB3_ModelTesting.py, make sure that the filepath for the model you want to train is correct (it's hard-coded right now so double check!)
+4. To test your trained model, run the following in your terminal
+   ```sh
+   python ./SB3_ModelTesting.py
+   ```
+   Once the total number of runs finishes, it should return a percentage of successful runs.
