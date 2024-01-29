@@ -1,0 +1,150 @@
+FROM ubuntu:18.04
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
+    apt-utils \
+    apt-transport-https \
+    software-properties-common \
+    sudo \
+    tzdata \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* && \
+    dpkg-reconfigure -f noninteractive tzdata
+
+# install wget so we can download packages
+RUN sudo apt -y update  
+RUN sudo apt-get -y install wget
+
+# install python3.7 for pytorch
+RUN sudo apt install software-properties-common
+RUN sudo add-apt-repository ppa:deadsnakes/ppa
+RUN sudo apt -y install python3.8
+
+# install github
+RUN apt-get -y update
+RUN apt-get -y install git
+RUN git config --global core.autocrlf false
+
+ARG UNAME=testuser
+
+# Create new user `docker` and disable password and gecos for later
+RUN adduser --disabled-password --gecos '' $UNAME
+# Add new user docker to sudo group
+RUN adduser $UNAME sudo
+
+# Ensure sudo group users are not
+# asked for a password when using
+# sudo command by ammending sudoers file
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+RUN sudo apt-get update
+RUN sudo apt install python3.8
+RUN sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 2
+RUN sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
+RUN sudo update-alternatives --list python3
+RUN sudo update-alternatives --config python3
+# RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -
+ADD install_ros_deps.sh /
+RUN chmod +x /install_ros_deps.sh
+RUN DEBIAN_FRONTEND=noninteractive /install_ros_deps.sh
+
+RUN apt-get -y install curl 
+RUN curl 'https://bootstrap.pypa.io/get-pip.py' > get-pip.py && sudo python3 get-pip.py
+RUN sudo python3 get-pip.py --force-reinstall
+
+RUN pip3 install msgpack
+RUN pip3 install numpy
+RUN pip3 install msgpack-rpc-python
+RUN pip3 install --upgrade pip
+RUN pip3 install opencv-contrib-python==4.5.3.56
+RUN pip3 install airsim==1.8.1
+
+RUN pip3 install scikit-learn
+RUN pip3 install torch
+RUN pip3 install pandas
+RUN pip3 install requests
+RUN pip3 install IPython
+RUN pip3 install psutil
+RUN pip3 install torchvision
+RUN pip3 install tqdm
+RUN pip3 install matplotlib
+RUN pip3 install seaborn
+RUN pip3 install rospkg
+
+RUN pip3 install gitpython
+RUN pip3 install Pillow
+RUN pip3 install --ignore-installed PyYAML
+RUN pip3 install PyYAML
+
+RUN pip3 install scipy
+RUN pip3 install thop
+RUN pip3 install  protobuf
+
+RUN pip3 install tensorboard
+RUN pip3 install clearml
+RUN pip3 install comet
+
+RUN pip3 install coremltools
+RUN pip3 install onnx
+RUN pip3 install onnx-simplifier
+RUN pip3 install nvidia-pyindex
+RUN pip3 install nvidia-tensorrt
+RUN pip3 install scikit-learn
+RUN pip3 install tensorflow
+RUN pip3 install tensorflowjs
+RUN pip3 install opencv-contrib-python==4.5.3.56
+# RUN sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 2
+# RUN sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
+# RUN sudo update-alternatives --list python3
+# RUN sudo update-alternatives --config python3
+RUN pip install --upgrade pip setuptools wheel
+RUN pip3 install opencv-python==4.5.3.56
+RUN pip3 install --upgrade pip
+RUN pip3 install openvino-dev
+
+RUN pip3 install setuptools
+RUN apt-get update && apt-get install -y python3.8-dev
+
+RUN pip3 install tritonclient
+
+# install pytorch and cuda
+# RUN pip3 install torch>=1.13.1+cu117 torchvision>=1.13.1+cu117 torchaudio>=1.13.1 --extra-index-url https://download.pytorch.org/whl/cu117
+
+# install additional packages to get ros melodic working
+RUN pip3 install --upgrade setuptools pip
+RUN pip3 install msgpack
+RUN pip3 install numpy
+RUN pip3 install msgpack-rpc-python
+RUN pip3 install --upgrade pip
+RUN pip3 install opencv-contrib-python==4.5.3.56
+RUN pip3 install airsim
+RUN sudo apt clean
+RUN sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys F42ED6FBAB17C654
+RUN apt-get update
+RUN sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+RUN sudo apt install curl -y
+RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -
+RUN sudo apt install ros-melodic-desktop-full -y
+RUN sudo apt install python-rosdep python-rosinstall python-rosinstall-generator python-wstool build-essential -y
+RUN sudo apt install python-rosdep
+RUN sudo apt-get install ros-melodic-tf2-sensor-msgs ros-melodic-tf2-geometry-msgs ros-melodic-mavros* -y
+RUN sudo apt-get install python-catkin-tools -y
+RUN sudo apt install iproute2 -y
+RUN sudo apt install iputils-ping -y
+RUN pip3 install numpy
+RUN pip3 install msgpack-rpc-python
+RUN pip3 install pandas
+RUN pip3 install requests
+RUN pip3 install psutil
+RUN pip3 install tqdm
+RUN pip3 install scikit-learn
+RUN pip3 install IPython
+RUN pip3 install matplotlib
+RUN pip3 install seaborn
+RUN pip3 install rospkg
+RUN pip3 install opencv-contrib-python==4.5.3.56
+RUN pip3 install split-image
+RUN pip3 install split-image
+RUN pip3 install -U scikit-learn
+
+USER $UNAME
+WORKDIR /home/${UNAME}

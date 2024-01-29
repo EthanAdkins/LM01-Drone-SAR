@@ -47,6 +47,11 @@ import ServiceRequestors.instructWolf as instructWolf
 import ServiceRequestors.checkGPU as checkGPU
 # import rosHelper
 import RosPublishHelper.MapHandlerPublishHelper as mapHandlerPublishHelper
+# Import SB3
+from stable_baselines3 import DQN
+import gymnasium as gym
+from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
+from stable_baselines3.common.monitor import Monitor
 
 # Environmental Variables
 LOOP_NUMBER = configDrones.LOOP_NUMBER
@@ -158,6 +163,8 @@ def wolfDroneController(droneName, droneCount, overseerCount):
     # cwd = os.getcwd()
     # yoloPT = os.path.join(str(cwd), 'best.pt')
     # model = torch.hub.load('ultralytics/yolov5', 'custom', path=yoloPT, trust_repo=True)
+    model_path = "/home/testuser/AirSim/PythonClient/multirotor/LM01-Drone-SAR/ReinforcementLearningStuff/StableBaslines3_Testing/Code/CheckPoints/DQN/BestModel/best_model"
+    rlModel = DQN.load(model_path)
 
     # Sets global values for wolf cluster and coordinate
     droneBoundary = math.floor(droneCount / overseerCount)
@@ -252,8 +259,16 @@ def wolfDroneController(droneName, droneCount, overseerCount):
             
         doCollision, closestObjectDistance, closestTree,closestTreeName= collisionDetectionBehavior.collisionAvoidanceCheck(client, droneName, threshold)
         timeDiff = time.time() - Collision_Mode_Time
-        if((doCollision) and (closestTreeName != tempTree)):
-            # debugPrint("Doing collision")
+        if((doCollision)):
+            print("Doing collision")
+            # RL Experiment
+            env = DummyVecEnv([lambda: Monitor(gym.make("airsim-drone-v0"))])
+            env = VecTransposeImage(env)
+            obs = env.reset()
+            action, _ = rlModel.predict(obs, deterministic=True)
+            obs, reward, done, info = env.step(action)
+
+
             Previously_Had_Collision = True
             Collision_Mode_Time = time.time()
             
@@ -270,7 +285,7 @@ def wolfDroneController(droneName, droneCount, overseerCount):
 
             yaw_mode = airsim.YawMode(is_rate=True, yaw_or_rate=(0))
             colTime = time.time()
-            vector = collisionDetectionBehavior.collisionAlgo(client,imgDir,droneName,closestObjectDistance,COLLISION_DIRECTION_FACTOR,closestTree)
+            vector = map_action_to_vector(action)
             endTime = time.time() - colTime
             depthImageCount += 1
             tempTree = closestTreeName
@@ -437,6 +452,22 @@ def wolfDroneController(droneName, droneCount, overseerCount):
         i+=1
     debugPrint("Average Loop Time in seconds: " + str(timeSpent / i))
     # Wolf Drone search loop End
+def map_action_to_vector(original_action):
+    # Map original_action to the corresponding movement vector
+    if original_action == 1:
+        return [1, 0]  # Move right
+    elif original_action == 2:
+        return [0, -1]  # Move down
+    elif original_action == 3:
+        return [0, 0]  # Move Back
+    elif original_action == 4:
+        return [-1, 0]  # Move Left
+    elif original_action == 5:
+        return [0, 1]  # Move Up
+    elif original_action == 6:
+        return [0, 0]  # Do nothing
+    else:
+        return [0, 0]  # Default action (e.g., do nothing)
 
 # Main Process End ----------------------------------------------
 
@@ -495,6 +526,7 @@ def wolfCameraDetection(droneName):
         if (Consensus_Decision_Behavior and not In_Position_CD):
             time.sleep(0.3); # wait for positon
             continue;
+        # Should this be front or front-center?
         response = getInfo.getResponse(threadClient, droneName, "front-center")
 
         # wolf gps 

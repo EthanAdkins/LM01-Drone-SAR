@@ -9,6 +9,7 @@ from split_image import split_image
 import math
 from contextlib import contextmanager
 import sys, os
+from stable_baselines3 import DQN
 
 @contextmanager
 def suppress_stdout():
@@ -22,9 +23,7 @@ def suppress_stdout():
 
 def setUpLidar(client,vehicle_name):
     image_type = airsim.ImageType.Scene
-    tree = "new_tree*"
-    client.simSetDetectionFilterRadius("0", image_type, 1200) 
-    client.simAddDetectionFilterMeshName("0", image_type, tree) 
+    client.simSetDetectionFilterRadius("front", image_type, 1200) 
 
 def parse_lidarData(data):
 
@@ -123,19 +122,17 @@ def collisionAvoidanceCheck(client, vehicle_name, threshhold):
     setUpLidar(client,vehicle_name)
     image_type = airsim.ImageType.Scene
     shortestDistance = 1000
-    closestTree = 0
-    trees = client.simGetDetections("0", image_type)
+    closestObject = None
+    objects = client.simGetDetections("front", image_type)
     info = client.getGpsData(vehicle_name = vehicle_name)
-
-    if trees:
-        for tree in trees:
-            distance = getDistance(client, vehicle_name,tree,info)
+    if objects:
+        for obj in objects:
+            distance = getDistance(client, vehicle_name,obj,info)
             # print("This is distance")
             # print(distance)
             # print("-------------")
             if(shortestDistance > distance):
-                closestTree = tree
-                closestTreeName = tree.name
+                closestobj = obj
                 shortestDistance = distance
                 # print("this is the shortest distance")
                 # print(vehicle_name)
@@ -144,11 +141,10 @@ def collisionAvoidanceCheck(client, vehicle_name, threshhold):
 
         # print("Slight :", tempSlightDeviation , "Closest Object:", closestObjectDistance)
     
-    if (shortestDistance < 8):
-        # trees = client.simClearDetectionMeshNames("1",image_type)
-        return True, shortestDistance, closestTree,closestTreeName 
+    if closestObject and shortestDistance < threshhold:
+        return True, shortestDistance, closestObject
     else:
-        return False, None , None, None
+        return False, None, None
 
 def setupCollisionDirectory(vehicle_name):
     # directory to store pictures
@@ -164,6 +160,7 @@ def setupCollisionDirectory(vehicle_name):
     return imgDir
 
 def start():
+    print("Did this actually do anything")
     vehicle_name = "0"
     # directory to store pictures
     DIRECTION_FACTOR = 5

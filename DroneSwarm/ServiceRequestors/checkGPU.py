@@ -13,7 +13,7 @@ def checkGPUStatus():
 
     # Stays in while until yolo is loaded on the gpu
     while (not responseObject.success):
-        time.sleep(1);
+        time.sleep(2);
         rospy.wait_for_service(GPU_SERVICE)
         response = rospy.ServiceProxy(GPU_SERVICE, requestGPU)
         responseObject = response("", 0, 0)

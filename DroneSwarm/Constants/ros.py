@@ -20,6 +20,7 @@ UPDATE_DRONE_POSITION = "UpdateDronePosition"
 PROXIMITY_OVERSEER_SERVICE = "ProximityOverseerService"
 PROXIMITY_WOLF_SERVICE = "PromixityWolfService"
 GPU_SERVICE = "GPUService"
+RLGPU_SERVICE = "RLGPUService"
 # dynamic services : need tp apend value
 WOLF_DRONE_SERVICE = "wolf_service_"
 # task group name beginning
