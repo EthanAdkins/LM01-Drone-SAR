@@ -9,7 +9,6 @@ from split_image import split_image
 import math
 from contextlib import contextmanager
 import sys, os
-from stable_baselines3 import DQN
 
 @contextmanager
 def suppress_stdout():
@@ -116,24 +115,28 @@ def getDistance(client,vehicle_name,treeInfo,droneInfo):
 
     return distance 
 
-def collisionAvoidanceCheck(client, vehicle_name, threshhold):
+def collisionAvoidanceCheck(client, vehicle_name, threshold):
     # tweakDronePath(client, vehicle_name)
     # repulsion(client, vehicle_name, DIRECTION_FACTOR)
     setUpLidar(client,vehicle_name)
+    parsedLidarInfo, _ = getLidarSensorInfo(client, vehicle_name)
+
     image_type = airsim.ImageType.Scene
     shortestDistance = 1000
     closestObject = None
-    objects = client.simGetDetections("front", image_type)
-    info = client.getGpsData(vehicle_name = vehicle_name)
-    if objects:
-        for obj in objects:
-            distance = getDistance(client, vehicle_name,obj,info)
+    
+
+    if parsedLidarInfo is not None:
+        for point in parsedLidarInfo:
+            x, y, z = point
+            distance = math.sqrt(x**2 + y**2 + z**2)  # Euclidean distance
+
+            if shortestDistance > distance:
+                shortestDistance = distance
             # print("This is distance")
             # print(distance)
             # print("-------------")
-            if(shortestDistance > distance):
-                closestobj = obj
-                shortestDistance = distance
+           
                 # print("this is the shortest distance")
                 # print(vehicle_name)
                 # print(shortestDistance)
@@ -141,10 +144,12 @@ def collisionAvoidanceCheck(client, vehicle_name, threshhold):
 
         # print("Slight :", tempSlightDeviation , "Closest Object:", closestObjectDistance)
     
-    if closestObject and shortestDistance < threshhold:
-        return True, shortestDistance, closestObject
+        if shortestDistance < threshold:
+            return True, shortestDistance
+        else:
+            return False, None
     else:
-        return False, None, None
+        return False, None
 
 def setupCollisionDirectory(vehicle_name):
     # directory to store pictures

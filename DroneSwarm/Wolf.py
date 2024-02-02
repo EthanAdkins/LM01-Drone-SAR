@@ -49,7 +49,9 @@ import ServiceRequestors.checkGPU as checkGPU
 import RosPublishHelper.MapHandlerPublishHelper as mapHandlerPublishHelper
 # Import SB3
 from stable_baselines3 import DQN
+import CustomEnv
 import gymnasium as gym
+import airgym
 from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from stable_baselines3.common.monitor import Monitor
 
@@ -163,9 +165,13 @@ def wolfDroneController(droneName, droneCount, overseerCount):
     # cwd = os.getcwd()
     # yoloPT = os.path.join(str(cwd), 'best.pt')
     # model = torch.hub.load('ultralytics/yolov5', 'custom', path=yoloPT, trust_repo=True)
-    model_path = "/home/testuser/AirSim/PythonClient/multirotor/LM01-Drone-SAR/ReinforcementLearningStuff/StableBaslines3_Testing/Code/CheckPoints/DQN/BestModel/best_model"
-    rlModel = DQN.load(model_path)
-
+    model_path = "/home/testuser/AirSim/PythonClient/multirotor/LM01-Drone-SAR/DroneSwarm/final_save"
+    try:
+        print("Loading DQN Model")
+        rlModel = DQN.load(model_path)
+        print("DQN Model Loaded")
+    except Exception as error:
+        print("DQN Model FAILED: ", error)
     # Sets global values for wolf cluster and coordinate
     droneBoundary = math.floor(droneCount / overseerCount)
     remainder = droneCount % overseerCount
@@ -257,12 +263,16 @@ def wolfDroneController(droneName, droneCount, overseerCount):
         # if (threshold < 5):
         #     threshold = 5
             
-        doCollision, closestObjectDistance, closestTree,closestTreeName= collisionDetectionBehavior.collisionAvoidanceCheck(client, droneName, threshold)
+        doCollision, shortestDistance = collisionDetectionBehavior.collisionAvoidanceCheck(client, droneName, threshold)
         timeDiff = time.time() - Collision_Mode_Time
         if((doCollision)):
             print("Doing collision")
             # RL Experiment
-            env = DummyVecEnv([lambda: Monitor(gym.make("airsim-drone-v0"))])
+            env = DummyVecEnv([lambda: Monitor(gym.make("airgym:airsim-drone-sample-v1",
+                ip_address="172.17.0.1",
+                step_length=1,
+                image_shape=(19,),
+                ))])
             env = VecTransposeImage(env)
             obs = env.reset()
             action, _ = rlModel.predict(obs, deterministic=True)
@@ -274,7 +284,7 @@ def wolfDroneController(droneName, droneCount, overseerCount):
             
             # distanceForTimeCalc = 0
             # if (closestObjectDistance < slightDeviationDistance):
-            distanceForTimeCalc = closestObjectDistance
+            distanceForTimeCalc = shortestDistance
             # else:
             #     distanceForTimeCalc = slightDeviationDistance
 
@@ -288,7 +298,7 @@ def wolfDroneController(droneName, droneCount, overseerCount):
             vector = map_action_to_vector(action)
             endTime = time.time() - colTime
             depthImageCount += 1
-            tempTree = closestTreeName
+            
             # text = "Collision avoidance time: " + str(Collision_Mode_Time_Length) + " Depth image count: " + str(depthImageCount) + "Collision algo time: " + str(endTime)
             # debugPrint(text)
 
