@@ -16,13 +16,13 @@ import pprint
 
 
 class  AirSimDroneEnvV1(AirSimEnv):
-    def __init__(self, ip_address, step_length, image_shape):
+    def __init__(self, ip_address, step_length, image_shape, drone_name):
         super().__init__(image_shape)
         self.step_length = step_length
         self.image_shape = image_shape
         self.negative_reward = 0
         self.threshold_start_time = time.time()
-
+        self.drone_name = drone_name
 
 
         self.state = {
@@ -55,9 +55,9 @@ class  AirSimDroneEnvV1(AirSimEnv):
     def _setup_flight(self):
         self.negative_reward = 0
         self.threshold_start_time = time.time()
-        self.drone.reset()
-        self.drone.enableApiControl(True)
-        self.drone.armDisarm(True)
+        #self.drone.reset()
+        #self.drone.enableApiControl(True)
+        #self.drone.armDisarm(True)
 
         # Set home position
         #self.starting_position = airsim.Vector3r(0, 0, -19)
@@ -72,7 +72,7 @@ class  AirSimDroneEnvV1(AirSimEnv):
         #last coors for city: (12.326184272766113, 119.89775848388672, -3.789776563644409)
         # last coors for mountain: (-359.7535095214844, -402.3492126464844, 15.1305513381958)
         # relatively close coors for UE5 City 
-        return airsim.Vector3r(70.68778991699219, 198.01834106445312, -17.886749267578125)
+        return airsim.Vector3r(4549.90332, 1039.579834, 187.999512)
 
     def getDist(self):
         return self.get_destination() - self.state["position"]
@@ -130,22 +130,22 @@ class  AirSimDroneEnvV1(AirSimEnv):
     
     def lidar_processing(self):
         lidar_results = np.zeros(4)
-        lidarData = self.drone.getLidarData(lidar_name="LidarSensor1", vehicle_name= "0")
+        lidarData = self.drone.getLidarData(lidar_name="LidarSensor1", vehicle_name= self.drone_name)
         if(len(lidarData.point_cloud)):
             lidar_results[0] = 1
         else:
             lidar_results[0] = 0
-        lidarData = self.drone.getLidarData(lidar_name="LidarSensor2", vehicle_name= "0")
+        lidarData = self.drone.getLidarData(lidar_name="LidarSensor2", vehicle_name= self.drone_name)
         if(len(lidarData.point_cloud)):
             lidar_results[1] = 1
         else:
             lidar_results[1] = 0    
-        lidarData = self.drone.getLidarData(lidar_name="LidarSensor3", vehicle_name= "0")
+        lidarData = self.drone.getLidarData(lidar_name="LidarSensor3", vehicle_name= self.drone_name)
         if(len(lidarData.point_cloud)):
             lidar_results[2] = 1
         else:
             lidar_results[2] = 0
-        lidarData = self.drone.getLidarData(lidar_name="LidarSensor4", vehicle_name= "0")
+        lidarData = self.drone.getLidarData(lidar_name="LidarSensor4", vehicle_name= self.drone_name)
         if(len(lidarData.point_cloud)):
             lidar_results[3] = 1
         else:
@@ -205,22 +205,22 @@ class  AirSimDroneEnvV1(AirSimEnv):
     
     def lidar_processing(self):
         lidar_results = np.zeros(4)
-        lidarData = self.drone.getLidarData(lidar_name="LidarSensor1", vehicle_name= "0")
+        lidarData = self.drone.getLidarData(lidar_name="LidarSensor1", vehicle_name= self.drone_name)
         if(len(lidarData.point_cloud)):
             lidar_results[0] = 1
         else:
             lidar_results[0] = 0
-        lidarData = self.drone.getLidarData(lidar_name="LidarSensor2", vehicle_name= "0")
+        lidarData = self.drone.getLidarData(lidar_name="LidarSensor2", vehicle_name= self.drone_name)
         if(len(lidarData.point_cloud)):
             lidar_results[1] = 1
         else:
             lidar_results[1] = 0    
-        lidarData = self.drone.getLidarData(lidar_name="LidarSensor3", vehicle_name= "0")
+        lidarData = self.drone.getLidarData(lidar_name="LidarSensor3", vehicle_name= self.drone_name)
         if(len(lidarData.point_cloud)):
             lidar_results[2] = 1
         else:
             lidar_results[2] = 0
-        lidarData = self.drone.getLidarData(lidar_name="LidarSensor4", vehicle_name= "0")
+        lidarData = self.drone.getLidarData(lidar_name="LidarSensor4", vehicle_name= self.drone_name)
         if(len(lidarData.point_cloud)):
             lidar_results[3] = 1
         else:

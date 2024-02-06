@@ -1,10 +1,15 @@
 Defaulting to user installation because normal site-packages is not writeable
 Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
-Requirement already satisfied: shimmy in /home/testuser/.local/lib/python3.8/site-packages (1.3.0)
+Collecting shimmy
+  Downloading Shimmy-1.3.0-py3-none-any.whl.metadata (3.7 kB)
 Requirement already satisfied: numpy>=1.18.0 in /usr/local/lib/python3.8/dist-packages (from shimmy) (1.24.3)
-Requirement already satisfied: gymnasium>=0.27.0 in /home/testuser/.local/lib/python3.8/site-packages (from shimmy) (0.29.1)
+Requirement already satisfied: gymnasium>=0.27.0 in /home/testuser/.local/lib/python3.8/site-packages (from shimmy) (0.28.1)
+Requirement already satisfied: jax-jumpy>=1.0.0 in /home/testuser/.local/lib/python3.8/site-packages (from gymnasium>=0.27.0->shimmy) (1.0.0)
 Requirement already satisfied: cloudpickle>=1.2.0 in /home/testuser/.local/lib/python3.8/site-packages (from gymnasium>=0.27.0->shimmy) (3.0.0)
 Requirement already satisfied: typing-extensions>=4.3.0 in /usr/local/lib/python3.8/dist-packages (from gymnasium>=0.27.0->shimmy) (4.5.0)
 Requirement already satisfied: farama-notifications>=0.0.1 in /home/testuser/.local/lib/python3.8/site-packages (from gymnasium>=0.27.0->shimmy) (0.0.4)
 Requirement already satisfied: importlib-metadata>=4.8.0 in /usr/local/lib/python3.8/dist-packages (from gymnasium>=0.27.0->shimmy) (7.0.1)
 Requirement already satisfied: zipp>=0.5 in /usr/local/lib/python3.8/dist-packages (from importlib-metadata>=4.8.0->gymnasium>=0.27.0->shimmy) (3.17.0)
+Downloading Shimmy-1.3.0-py3-none-any.whl (37 kB)
+Installing collected packages: shimmy
+Successfully installed shimmy-1.3.0
