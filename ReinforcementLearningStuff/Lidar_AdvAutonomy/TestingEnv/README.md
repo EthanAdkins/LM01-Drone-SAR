@@ -21,3 +21,4 @@ Several settings might be used when testing with AirSim, so we will also keep th
 ### Customizing settings.json
 1. To locate your settings.json, go to "C:\Users\xxxx\Documents\AirSim"
 2. Change the contents of the json file by copy-pasting.
+p.s. config for lidar testing is not yet final
