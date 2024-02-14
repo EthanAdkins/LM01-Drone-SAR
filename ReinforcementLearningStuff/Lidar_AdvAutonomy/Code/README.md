@@ -1,20 +1,23 @@
-<h1 align="center"> </h1>
+<!-- SB3 RL Code -->
+## SB3 RL Code 
 
-<p align="center">
-    <img src="/Project Logos/Logo_Horizontal.png" />
-</p>
+Most of the stuff here I (Andrei) have not touched yet, but this directory contains a good amount of code which could be a good start for our RL training for drones :D
 
-# Unreal Engine Environment Links:
+### P.S. Some files are still outdated!
+Some of the files here use deprecated functions. The files that have been updated to be compatible with libraries are:
+- traversal_dqn_depr.py
+- drone_env.py (this is a custom env, do not run directly)
 
-## City Sample Environment with single car: 
-https://knightsucfedu39751-my.sharepoint.com/:u:/g/personal/georgec_knights_ucf_edu/Ecoe4W7ABPBIsGu4v7cAAjkBHXZcR6GtYsevaSCghw91xQ?e=tX9Mw9
+### Prerequisites
 
-## City Sample Environment with full traffic:
-https://knightsucfedu39751-my.sharepoint.com/:u:/g/personal/georgec_knights_ucf_edu/EUCuCRLkvspGjjTUhHnCfcQBzxvPWkXDiOQgX35ISP46gw?e=5A2KPB 
+Before running the code, make sure that:
+* You have the settings.json configured similar to the one in TestingEnv
+* Your conda environment is compatible with the codebase (check TestingEnv)
 
-## Car Tracking Environment with multiple paths:
-https://knightsucfedu39751-my.sharepoint.com/:u:/g/personal/georgec_knights_ucf_edu/EdHmPOT7KLlBte-O0Anp-LUBAraNxSMarDJ19JE3DyJtGg?e=N7q1in 
-
-## Car Tracking Environment with loop track:
-https://knightsucfedu39751-my.sharepoint.com/:u:/g/personal/georgec_knights_ucf_edu/EfWyCUEt4-dCoHL4zNPx-HsB7qRSriMkMTXWCidZWh5wEg?e=DmfkxO" 
+### How to run the code
+1. Get your AirSim running first and click play to spawn a drone!
+2. In your terminal, make sure you are in the same directory where the file is. If you want to run a DQN training, do
+   ```sh
+   python ./traversal_dqn_depr.py
+   ```
 
