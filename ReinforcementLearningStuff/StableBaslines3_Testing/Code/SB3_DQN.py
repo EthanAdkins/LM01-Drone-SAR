@@ -14,8 +14,10 @@ import torch as th
 from torch import nn
 from stable_baselines3.common.env_checker import check_env
 
+# try learning rate schedule
+from typing import Callable
+
 logdir = "logs"
-#models_dir = "models/DQN"
 models_dir = "models/DQN"
 
 if not os.path.exists(models_dir): #create directories if they dont already exist
@@ -37,7 +39,8 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
         # We need to know size of the output of this extractor,
         # so go over all the spaces and compute output feature sizes
         for key, subspace in observation_space.spaces.items():
-            #print(key)
+            print(key)
+            print(subspace)
             if key == "image":
                 # We assume CxHxW images (channels first)
                 # Re-ordering will be done by pre-preprocessing or wrapper
@@ -88,7 +91,7 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
                     nn.ReLU()
                 )
                 total_concat_size += 16
-            
+        print(extractors)
         self.extractors = nn.ModuleDict(extractors)
 
         # Update the features dim manually
@@ -98,8 +101,8 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
         encoded_tensor_list = []
 
         for key, extractor in self.extractors.items():
-           # if key in ["image"]:
-           #     observations[key] = observations[key].permute((0, 3, 1, 2))
+            # if key in ["image"]:
+            #     observations[key] = observations[key].permute((0, 3, 1, 2))
 
             encoded_tensor_list.append(extractor(observations[key]))
 
@@ -117,37 +120,57 @@ policy_kwargs = dict(
 env = DummyVecEnv([lambda: Monitor(gymnasium.make("airsim-drone-v0"))])
 env = VecTransposeImage(env)
 
+def linear_schedule(initial_value: float) -> Callable[[float], float]:
+    """
+    Linear learning rate schedule.
+
+    :param initial_value: Initial learning rate.
+    :return: schedule that computes
+    current learning rate depending on remaining progress
+    """
+    def func(progress_remaining: float) -> float:
+        """
+        Progress will decrease from 1 (beginning) to 0.
+
+        :param progress_remaining:
+        :return: current learning rate
+        """
+        return progress_remaining * initial_value
+
+    return func
+
 
 model = DQN(
     "MultiInputPolicy",
     env,
     learning_rate=0.0001, #0.00025
+    # learning_rate=linear_schedule(1.0),
     verbose=1,
-    batch_size=64, #128  #32
+    # batch_size=64, #128  #32
+    batch_size=256,
     train_freq=4, #4
-    target_update_interval=5_000, #5_000
+    # target_update_interval=5_000, #5_000
+    target_update_interval=3_000,
     learning_starts=1000 , #3_000, #5_000
     policy_kwargs=policy_kwargs,
-    buffer_size=50_000, #500_000
+    buffer_size=75_000, #500_000
+    # buffer_size=70_000,
     max_grad_norm=10,
     exploration_fraction=0.6, #0.1
     exploration_final_eps=0.01,
     device="cuda",
-    tensorboard_log=logdir,
-    # double_q=True
+    tensorboard_log=logdir
 )
-
-#model = DQN.load(r"C:\Users\User\Desktop\ThesisUnReal\CheckPoints\DQN\CheckPoint\rl_model_14000_steps.zip", env=env, tensorboard_log=logdir)
-#replay_buffer = model.load_replay_buffer(r"C:\Users\User\Desktop\ThesisUnReal\CheckPoints\DQN\CheckPoint\rl_model_replay_buffer_14000_steps.pkl")
 
 callbacks = []
 
 checkpoint_callback = CheckpointCallback(
-  save_freq=7_000,
-  save_path="./CheckPoints/DQN/CheckPoint/",
-  name_prefix="rl_model",
-  save_replay_buffer=False,
-  save_vecnormalize=True,
+    save_freq=7_000,
+    save_path="./CheckPoints/DQN/CheckPoint/",
+    name_prefix="rl_model",
+    # save_replay_buffer=False,
+    save_replay_buffer=True,
+    save_vecnormalize=True,
 )
 
 stop_train_callback = StopTrainingOnNoModelImprovement(
@@ -158,7 +181,7 @@ stop_train_callback = StopTrainingOnNoModelImprovement(
 
 eval_callback = EvalCallback(
     env,
-    callback_on_new_best=True,
+    callback_on_new_best=None,
     n_eval_episodes=5,
     callback_after_eval=stop_train_callback,
     best_model_save_path="./CheckPoints/DQN/BestModel/",
@@ -172,20 +195,14 @@ callbacks.append(checkpoint_callback)
 kwargs = {}
 kwargs["callback"] = callbacks
 
-TIMESTEPS = 50_000
+TIMESTEPS = 55_000
 
 model.learn(
     total_timesteps=TIMESTEPS,
-    reset_num_timesteps=False,
+    # reset_num_timesteps=False,
+    reset_num_timesteps=True,
     tb_log_name="DQN",
     **kwargs
     )
     
 model.save(f"{models_dir}/{TIMESTEPS}")
-
-vec_env = model.get_env()
-obs = vec_env.reset()
-model.predict(obs)
-
-env.reset()
-# env.disconnect()

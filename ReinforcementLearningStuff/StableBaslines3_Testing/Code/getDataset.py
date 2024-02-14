@@ -1,13 +1,13 @@
-import gym
+import gymnasium as gym
 import CustomEnv
 import airsim
 import os
 from collections import deque
 
 def test_env(): 
-    env = gym.make("airsim-drone-dynamic-v0")
-    image_path_col = "Dataset3/Collision"
-    image_path_nocol = "Dataset3/NonCollision"
+    env = gym.make("airsim-drone-v0")
+    image_path_col = "C:/Users/andre/Desktop/ThesisUnReal/Dataset/Collision"
+    image_path_nocol = "C:/Users/andre/Desktop/ThesisUnReal/Dataset/NonCollision"
     counter_col = 0
     counter_nocol = 0
     for ep in range(500):

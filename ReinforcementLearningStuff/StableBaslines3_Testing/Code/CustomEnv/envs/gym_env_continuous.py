@@ -1,8 +1,8 @@
 import airsim
 import numpy as np
 import os
-import gym
-from gym import spaces
+import gymnasium
+from gymnasium import spaces
 from PIL import Image, ImageStat
 from matplotlib import pyplot as plt
 import time
@@ -23,19 +23,29 @@ rewardConfig = {
 }
 
 TIME = 1
-
-class drone_env_continuous(gym.Env):
+'''Static Environment for PPO: id=airsim-drone-continuous-v0'''
+class drone_env_continuous(gymnasium.Env):
     def __init__(self):
         super(drone_env_continuous, self).__init__()
+         #  -- set drone client --
+        self.drone = airsim.MultirotorClient() 
+        self.drone.confirmConnection()
+        
         self.max_timestep= 250 
-        self.goal_position = np.array([50.0, 0.0, -2.8], dtype=np.float64) #Unreal object in cm 53
+        # self.goal_position = np.array([50.0, 0.0, -2.8], dtype=np.float64) #Unreal object in cm 53
+        
         self.step_length = 1
         self.img_width = 150
         self.img_height = 150
         self.elapsed = 0
         self.start_time = 0
         self.timestep_count = 0
-        self.goal_name = "Goal"
+        
+        # self.goal_name = "Goal"
+        self.goal_name = "Character_0" #     this is the target (person) in Blocks
+        goal_pos = self.drone.simGetObjectPose(self.goal_name).position
+        self.goal_position = np.array([goal_pos.x_val, goal_pos.y_val, goal_pos.z_val], dtype=np.float64)
+
         self.goals = []
         self.sub_goal = 0
         self.VertPos = []
@@ -90,13 +100,13 @@ class drone_env_continuous(gym.Env):
         )
 
         #  -- set drone client --
-        self.drone = airsim.MultirotorClient() 
-        self.drone.confirmConnection()
+        # self.drone = airsim.MultirotorClient() 
+        # self.drone.confirmConnection()
 
         #  -- set goal position --
-        position = Vector3r(self.goal_position[0], self.goal_position[1], self.goal_position[2])
-        pose = Pose(position, self.heading)
-        self.drone.simSetObjectPose(self.goal_name, pose, True)
+        # position = Vector3r(self.goal_position[0], self.goal_position[1], self.goal_position[2])
+        # pose = Pose(position, self.heading)
+        # self.drone.simSetObjectPose(self.goal_name, pose, True)
 
         self.setGoals()
         
@@ -123,10 +133,12 @@ class drone_env_continuous(gym.Env):
     def setGoals(self):
         distance, _ = self.get_distance()
         sub_distance = distance / 4
+        print("Distance: " + str(distance))
         for _ in range(3):
             distance -= sub_distance
             self.goals.append(distance)
         self.goals.append(-99)
+        print(self.goals)
 
     def doAction(self, action):
         
@@ -144,8 +156,8 @@ class drone_env_continuous(gym.Env):
 
         dist = np.linalg.norm(self.info["position"]-self.goal_position)
         prev_dist = np.linalg.norm(self.info["prev_position"]-self.goal_position)
-        #print(dist)
-        #print(prev_dist)
+        print("current distance from goal: " + str(dist))
+        print("previous distance from goal: " + str(prev_dist))
        
         return dist, prev_dist
     
@@ -172,7 +184,7 @@ class drone_env_continuous(gym.Env):
         distance, previous_distance = self.get_distance()
         reward = (previous_distance - distance) - np.linalg.norm(self.info["prev_position"]-self.info["position"])
         
-
+        
         if distance <= self.goals[self.sub_goal]:
             print("Level: "+str(self.sub_goal))
             self.sub_goal += 1 
@@ -200,7 +212,7 @@ class drone_env_continuous(gym.Env):
             reward = rewardConfig['timed']
             done = True
 
-        #print("Final reward: "+str(reward))
+        print("Final reward: "+str(reward))
         #print(reward)
         
         return reward, done
@@ -211,12 +223,14 @@ class drone_env_continuous(gym.Env):
 
         self.doAction(chosenAction)
         
-        obs = self.getObservation()
+        # obs = self.getObservation()
+        obsAq = self.getObservation()
+        obs = obsAq[0]
 
-        reward, done = self.calculateReward(chosenAction)
+        reward, terminated = self.calculateReward(chosenAction)
 
         #  -- Sometimes image bounces over obstacles once collision triggers --
-        if done:
+        if terminated:
            mean1 = np.mean(self.state["image"])
            mean2 = np.mean(self.info["prev_image"])
 
@@ -225,7 +239,7 @@ class drone_env_continuous(gym.Env):
 
         info = self.info
 
-        return obs, reward, done, info
+        return obs, reward, terminated, False, info
 
     def reset(self, seed=None, options=None):
         if seed is not None:
@@ -237,7 +251,7 @@ class drone_env_continuous(gym.Env):
         self.randomiseObjects()
 
         #  -- Reset our action history --
-        #self.state["action_history"] = -1 * np.ones(10, dtype=np.int8)
+        # self.state["action_history"] = -1 * np.ones(10, dtype=np.int8)
         self.drone.simPause(False)
         self.startFlight()
         self.drone.simPause(True)
@@ -279,7 +293,7 @@ class drone_env_continuous(gym.Env):
         self.drone.stopRecording()
 
     def getImageObs(self):
-        my_path = "C:/Users/User/Desktop/ThesisUnReal/TestImages2/"
+        my_path = "C:/Users/andre/Desktop/ThesisUnReal/TestImages2/"
         isExist = os.path.exists(my_path)
 
         if not isExist:
@@ -288,6 +302,12 @@ class drone_env_continuous(gym.Env):
         files = glob.glob(my_path + "*")
 
         imagelocation = files[0] + "/images/"
+
+        imageChangedlocation = files[0] + "/imagesChanged/"
+        isExist = os.path.exists(imageChangedlocation)
+        if not isExist:
+            os.makedirs(imageChangedlocation)
+
         mytime = 0
         start_time2 = time.time()
         while(True):
@@ -329,12 +349,13 @@ class drone_env_continuous(gym.Env):
             image = image.rotate(180)
             image = image.transpose(method=Image.Transpose.FLIP_LEFT_RIGHT)
 
-            #image_path = "TestImages"
+            # image_path = "TestImages"
+            image_path = imageChangedlocation
 
             im_final = np.array(image.resize((150, 150)).convert("L"))
             
             im_final = im_final.reshape([150, 150, 1])
-            #airsim.write_png(os.path.normpath(f'{image_path}/imageChanged{num}.png'), im_final)
+            airsim.write_png(os.path.normpath(f'{image_path}/imageChanged{num}.png'), im_final)
             num+=1
 
         folder = my_path
@@ -369,7 +390,7 @@ class drone_env_continuous(gym.Env):
         self.drone.simPause(True)
 
         image = self.getImageObs()
-        image_path = "TestImages"
+        image_path = "C:/Users/andre/Desktop/ThesisUnReal/TestImages2/"
         airsim.write_png(os.path.normpath(f'{image_path}/imageChanged.png'), image)
         self.info["prev_image"] = self.state["image"] 
         self.state["image"] = image
@@ -396,7 +417,11 @@ class drone_env_continuous(gym.Env):
 
         self.state["relative_distance"] = self.getRelativeDistance()
 
-        return self.state
+        # return self.state
+        obs = self.state
+        info = self.info
+
+        return obs, info
 
     def transformImage(self, responses):
         
