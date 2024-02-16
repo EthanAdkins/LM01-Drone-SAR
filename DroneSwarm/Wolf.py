@@ -495,7 +495,7 @@ def wolfCameraDetection(droneName):
         if (Consensus_Decision_Behavior and not In_Position_CD):
             time.sleep(0.3); # wait for positon
             continue;
-        response = getInfo.getResponse(threadClient, droneName, "front-center")
+        response = getInfo.getResponse(threadClient, droneName, "front")
 
         # wolf gps 
         gps = getInfo.getDroneGPS(droneName, threadClient)
