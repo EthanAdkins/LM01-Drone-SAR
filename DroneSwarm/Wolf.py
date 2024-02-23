@@ -47,6 +47,7 @@ import ServiceRequestors.instructWolf as instructWolf
 import ServiceRequestors.checkGPU as checkGPU
 # import rosHelper
 import RosPublishHelper.MapHandlerPublishHelper as mapHandlerPublishHelper
+import BayesTheorem as bayes 
 
 # Environmental Variables
 LOOP_NUMBER = configDrones.LOOP_NUMBER
@@ -970,6 +971,10 @@ def endConsensusDecision():
         # Circle_Radius_GPS, Circle_Radius_Meters = None, None;
         # Start_Time, Search_Time = None, None;
         Task_Group = "";
+
+        # Update cell probability
+        print("BayesGPSLocation: Long:", Circle_Center_GPS.longitude, " Lat: ", Circle_Center_GPS.latitude)
+        bayes.apply_evidence_to_cell((Circle_Center_GPS.longitude, Circle_Center_GPS.latitude))
     
 def updateConsensusWaypointHistory(waypoint):
     global Consensus_Waypoint_History

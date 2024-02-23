@@ -28,6 +28,7 @@ import Constants.ros as ros
 from HelperFunctions import clusterHelper
 from airsim_ros_pkgs.srv import requestGPU
 from ImageProcessing import getInfo
+import BayesTheorem as bayes 
 
 # Environmental Variables
 LOOP_NUMBER = configDrones.LOOP_NUMBER
@@ -87,6 +88,10 @@ if __name__ == '__main__': # Only runs if this is main processes
         droneName = "Overseer_" + droneNum
         mp.Process(target=overseerDroneController, args=(droneName,overseerCount, wolfCount)).start()
 
+    # Start the initial Bayes Theorem probability grid
+    print("Starting Bayes")
+    Grid = bayes.startBayes((10,20))
+    print(Grid)
 
     # One node for "MissionControl"
     nodeName = "MissionControl"
