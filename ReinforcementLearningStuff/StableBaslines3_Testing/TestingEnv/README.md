@@ -13,6 +13,8 @@ To ensure consistent testing, this is where we will put the conda environments w
 2. Select the Environment you want to export, and then select "Backup"
 3. Save it somewhere in your local computer, then push it to this repo
 
+If you want to use git bash as your terminal to run conda commands, follow this guide: https://discuss.codecademy.com/t/setting-up-conda-in-git-bash/534473
+
 
 <!-- Settings Config for AirSim -->
 ## Settings Config for AirSim
