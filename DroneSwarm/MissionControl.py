@@ -28,7 +28,7 @@ import Constants.ros as ros
 from HelperFunctions import clusterHelper
 from airsim_ros_pkgs.srv import requestGPU
 from ImageProcessing import getInfo
-import BayesTheorem as bayes 
+from BayesTheorem import BayesGrid
 
 # Environmental Variables
 LOOP_NUMBER = configDrones.LOOP_NUMBER
@@ -41,6 +41,9 @@ SLAM_MERGE_TOPIC = ros.SLAM_MERGE_TOPIC
 
 # ros service
 GPU_SERVICE = ros.GPU_SERVICE
+
+# Bayes
+GRID_SIZE = configDrones.GRID_SIZE 
 
 # Main Process Start ----------------------------------------------
 # Main function for mission control
@@ -90,8 +93,9 @@ if __name__ == '__main__': # Only runs if this is main processes
 
     # Start the initial Bayes Theorem probability grid
     print("Starting Bayes")
-    Grid = bayes.startBayes((10,20))
-    print(Grid)
+    bayes_grid = BayesGrid(GRID_SIZE)
+    BayesGrid.save_to_file()
+    print(bayes_grid.Grid)
 
     # One node for "MissionControl"
     nodeName = "MissionControl"

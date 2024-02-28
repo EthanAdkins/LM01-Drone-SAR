@@ -47,7 +47,7 @@ import ServiceRequestors.instructWolf as instructWolf
 import ServiceRequestors.checkGPU as checkGPU
 # import rosHelper
 import RosPublishHelper.MapHandlerPublishHelper as mapHandlerPublishHelper
-import BayesTheorem as bayes 
+from BayesTheorem import BayesGrid 
 
 # Environmental Variables
 LOOP_NUMBER = configDrones.LOOP_NUMBER
@@ -66,6 +66,7 @@ CONSENSUS_ITERATION_LENGTH_SECONDS = configDrones.CONSENSUS_ITERATION_LENGTH_SEC
 YOLO_CONFIDENCE = configDrones.YOLO_CONFIDENCE
 MAX_COLLISION_TIME =configDrones.MAX_COLLISION_TIME
 MIN_COLLISION_TIME = configDrones.MIN_COLLISION_TIME
+GRID_SIZE = configDrones.GRID_SIZE
 # ros: topics
 SLAM_MERGE_TOPIC = ros.SLAM_MERGE_TOPIC # TODO
 WOLF_DATA_TOPIC = ros.WOLF_DATA_TOPIC
@@ -950,7 +951,11 @@ def updateConsensusDecisionCenter(circleCenterGPS, currIterationNum, result):
                 endTaskPublish.publish("e")
                 with lock:
                     End_Loop = True
+
+            else:
+                debugPrint("NOT TARGET 1")
         # consenus decion no target found
+        debugPrint("NOT TARGET 2")
         global Consensus_Decision_Behavior;
         if (Consensus_Decision_Behavior):
             endConsensusDecision();
@@ -972,10 +977,15 @@ def endConsensusDecision():
         # Start_Time, Search_Time = None, None;
         Task_Group = "";
 
-        # Update cell probability
-        print("BayesGPSLocation: Long:", Circle_Center_GPS.longitude, " Lat: ", Circle_Center_GPS.latitude)
-        bayes.apply_evidence_to_cell((Circle_Center_GPS.longitude, Circle_Center_GPS.latitude))
-    
+        # # Update cell probability
+        # print("BayesGPSLocation: Long:", Circle_Center_GPS.longitude, " Lat: ", Circle_Center_GPS.latitude)
+        # BayesGrid.load_from_file()
+        # bayes_grid = BayesGrid(GRID_SIZE)
+        # #print("WolfPre: ", bayes_grid.Grid)
+        # bayes_grid.apply_evidence_to_cell((Circle_Center_GPS.latitude, Circle_Center_GPS.longitude))
+        # BayesGrid.save_to_file()
+        # print("WolfUpdated: ", bayes_grid.Grid)
+
 def updateConsensusWaypointHistory(waypoint):
     global Consensus_Waypoint_History
     with lock:
