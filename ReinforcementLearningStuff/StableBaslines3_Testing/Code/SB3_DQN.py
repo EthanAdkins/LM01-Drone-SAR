@@ -45,17 +45,33 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
                 # We assume CxHxW images (channels first)
                 # Re-ordering will be done by pre-preprocessing or wrapper
                 
+                # n_input_channels = subspace.shape[0]
+                # extractors[key] = nn.Sequential(
+                #     nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=4, padding=0),
+                #     nn.ReLU(),
+                #     nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=0),
+                #     nn.ReLU(),
+                #     nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
+                #     nn.ReLU(),
+                #     nn.Flatten(),
+                # )
                 n_input_channels = subspace.shape[0]
                 extractors[key] = nn.Sequential(
-                    nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=4, padding=0),
+                    nn.Conv2d(n_input_channels, 32, kernel_size=3, padding=1),
                     nn.ReLU(),
-                    nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=0),
+                    nn.MaxPool2d(kernel_size=2),
+
+                    nn.Conv2d(32, 64, kernel_size=3, padding=1),
                     nn.ReLU(),
-                    nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
+                    nn.MaxPool2d(kernel_size=2),
+
+                    nn.Conv2d(64, 128, kernel_size=3, padding=1),
                     nn.ReLU(),
+                    nn.MaxPool2d(kernel_size=2),
+                    
                     nn.Flatten(),
                 )
-                
+
                 # Compute shape by doing one forward pass
                 with th.no_grad():
                     ex_shape = extractors[key](th.as_tensor(observation_space.sample()[key]).float())
@@ -147,13 +163,13 @@ model = DQN(
     # learning_rate=linear_schedule(1.0),
     verbose=1,
     # batch_size=64, #128  #32
-    batch_size=256,
+    batch_size=128,
     train_freq=4, #4
     # target_update_interval=5_000, #5_000
-    target_update_interval=3_000,
+    target_update_interval=5_000,
     learning_starts=1000 , #3_000, #5_000
     policy_kwargs=policy_kwargs,
-    buffer_size=75_000, #500_000
+    buffer_size=100_000, #500_000
     # buffer_size=70_000,
     max_grad_norm=10,
     exploration_fraction=0.6, #0.1

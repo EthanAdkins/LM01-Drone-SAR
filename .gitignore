@@ -4,3 +4,5 @@
 *.jpg
 *.txt
 DroneSwarm/Constants/configDrones.py
+ReinforcementLearningStuff/StableBaslines3_Testing/Code/CheckPoints/DQN/BestModel/best_model.zip
+ReinforcementLearningStuff/StableBaslines3_Testing/Code/CheckPoints/DQN/BestModel/evaluations.npz

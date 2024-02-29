@@ -109,8 +109,8 @@ F
         5 - Move Up
         6 - Do Nothing
         """
-        # self.action_space = spaces.Discrete(6)
-        self.action_space = spaces.Discrete(9) # add rotation 
+        self.action_space = spaces.Discrete(6)
+        # self.action_space = spaces.Discrete(9) # add rotation 
 
         #  -- set goal position --
         # position = Vector3r(self.goal_position[0], self.goal_position[1], self.goal_position[2])
@@ -122,9 +122,10 @@ F
         self.getParentObjPos()
 
         # -- set image request --
-        self.image_request = airsim.ImageRequest(
-            "0", airsim.ImageType.DepthPerspective, True, False
-        )   
+        # self.image_request = airsim.ImageRequest(
+        #     "0", airsim.ImageType.DepthPerspective, True, False
+        # )
+        self.image_request = self.drone.simGetImages([airsim.ImageRequest("0",airsim.ImageType.DepthPerspective, True, False)])
    
     
     def getParentObjPos(self):
@@ -150,51 +151,37 @@ F
         self.goals.append(-99)
         print(self.goals)
 
-    # def doAction(self, action):
-    #     quad_offset = self.getActionChange(action)
-        
-    #     self.drone.startRecording()
-    #     self.drone.moveByVelocityAsync(quad_offset[0],
-    #                                    quad_offset[1],
-    #                                    quad_offset[2],
-    #                                    TIME).join()
-    #     self.drone.stopRecording()
-
-    #     return
-    
-    '''modified doAction'''
     def doAction(self, action):
-        quad_offset, rotate = self.getActionChange(action)
+        quad_offset = self.getActionChange(action)
+        
         self.drone.startRecording()
+        self.drone.moveByVelocityAsync(quad_offset[0],
+                                       quad_offset[1],
+                                       quad_offset[2],
+                                       0.5).join()
+        # self.drone.stopRecording()
 
-        if rotate == 0:
-            quad_vel = self.drone.getMultirotorState().kinematics_estimated.linear_velocity
-            self.drone.moveByVelocityAsync(
-                quad_vel.x_val + quad_offset[0],
-                quad_vel.y_val + quad_offset[1],
-                quad_vel.z_val + quad_offset[2],
-                TIME,
-            ).join()
-        else:
-            self.drone.rotateByYawRateAsync(quad_offset, .5).join()
-        self.drone.stopRecording()
+        return
+    
+    # '''modified doAction'''
+    # def doAction(self, action):
+    #     quad_offset, rotate = self.getActionChange(action)
+    #     self.drone.startRecording()
+
+
+    #     if rotate == 0:
+    #         quad_vel = self.drone.getMultirotorState().kinematics_estimated.linear_velocity
+    #         self.drone.moveByVelocityAsync(
+    #             quad_vel.x_val + quad_offset[0],
+    #             quad_vel.y_val + quad_offset[1],
+    #             quad_vel.z_val + quad_offset[2],
+    #             0.5,
+    #         ).join()
+    #     else:
+    #         self.drone.rotateByYawRateAsync(quad_offset, .5).join()
+    #     # self.drone.stopRecording()
     
     def getActionChange(self, action):
-        # if action == 0:
-        #     quad_offset = (self.step_length, 0, 0)
-        # elif action == 1:
-        #     quad_offset = (0, self.step_length, 0)
-        # elif action == 2:
-        #     quad_offset = (0, 0, self.step_length)
-        # elif action == 3:
-        #     quad_offset = (-self.step_length, 0, 0)
-        # elif action == 4:
-        #     quad_offset = (0, -self.step_length, 0)
-        # elif action == 5:
-        #     quad_offset = (0, 0, -self.step_length)
-        # else:
-        #     quad_offset = (0, 0, 0)
-        rotate = 0
         if action == 0:
             quad_offset = (self.step_length, 0, 0)
         elif action == 1:
@@ -207,16 +194,32 @@ F
             quad_offset = (0, -self.step_length, 0)
         elif action == 5:
             quad_offset = (0, 0, -self.step_length)
-        elif action == 6:
-            rotate = 1
-            quad_offset = -30
-        elif action == 7:
-            rotate = 1
-            quad_offset = 30
         else:
             quad_offset = (0, 0, 0)
+        # rotate = 0
+        # if action == 0:
+        #     quad_offset = (self.step_length, 0, 0)
+        # elif action == 1:
+        #     quad_offset = (0, self.step_length, 0)
+        # elif action == 2:
+        #     quad_offset = (0, 0, self.step_length)
+        # elif action == 3:
+        #     quad_offset = (-self.step_length, 0, 0)
+        # elif action == 4:
+        #     quad_offset = (0, -self.step_length, 0)
+        # elif action == 5:
+        #     quad_offset = (0, 0, -self.step_length)
+        # elif action == 6:
+        #     rotate = 1
+        #     quad_offset = -30
+        # elif action == 7:
+        #     rotate = 1
+        #     quad_offset = 30
+        # else:
+            quad_offset = (0, 0, 0)
         print(action)
-        return quad_offset, rotate
+        # return quad_offset, rotate
+        return quad_offset
 
     
     def get_distance(self):
@@ -266,7 +269,7 @@ F
             reward = rewardConfig['collided']
             done = True
 
-        if self.state["relative_distance"][0] < 6 and self.state["relative_distance"][1] < 6:
+        if self.state["relative_distance"][0] < 7 and self.state["relative_distance"][1] < 7:
         # if -2 <= self.state["relative_distance"][0] <= 2 and -2 <= self.state["relative_distance"][1] <= 2:
         # if distance < 2:
         # if self.state["relative_distance"][0] < 2:
@@ -364,7 +367,7 @@ F
         
 
     def getImageObs(self):
-        my_path = "C:/Users/andre/Desktop/ThesisUnReal/TestImages2/"
+        my_path = "F:/Documents/RLModel_Pics/"
         isExist = os.path.exists(my_path)
 
         if not isExist:
@@ -461,10 +464,10 @@ F
 
     def getObservation(self, chosenAction):
 
-        self.drone.simPause(True)
+        # self.drone.simPause(True)
         image = self.getImageObs()
         # image_path = "TestImages2"
-        image_path = "C:/Users/andre/Desktop/ThesisUnReal/TestImages2/"
+        image_path = "F:/Documents/RLModel_Pics/"
 
         airsim.write_png(os.path.normpath(f'{image_path}/imageChanged.png'), image)
         self.info["prev_image"] = self.state["image"] 
