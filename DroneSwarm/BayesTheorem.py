@@ -10,7 +10,7 @@ BOTTOM_LEFT_BOUND = configDrones.BOTTOM_LEFT_BOUND
 TOP_RIGHT_BOUND = configDrones.TOP_RIGHT_BOUND
 grid_index_width = configDrones.grid_index_width
 grid_index_height = configDrones.grid_index_height
-global Grid
+
 
 class BayesGrid:
     Grid = None
@@ -19,6 +19,7 @@ class BayesGrid:
         if BayesGrid.Grid is None:
             print("Initializing Grid")
             BayesGrid.Grid = self.initializeGrid(size)
+            self.seen_search_ids = set()
 
     def initializeGrid(self, size):
         """ Initialize a uniform probability grid. """
@@ -29,8 +30,18 @@ class BayesGrid:
         """ Find the index of the cell with the highest probability. """
         return np.unravel_index(np.argmax(self.Grid), self.Grid.shape)
 
-    def apply_evidence_to_cell(self, GPSCoord):
+    def apply_evidence_to_cell(self, GPSCoord, searchID):
         """ Apply evidence to a specific cell. """
+        # Returns True if updated, False if not
+        
+        # Check if searchID has been seen before
+        if searchID in self.seen_search_ids:
+            print(f"Search ID {searchID} has been seen before.")
+            return False
+        
+        # If searchID is new, add it to the set
+        self.seen_search_ids.add(searchID)
+
         # cell = (row, column)
         if(self.is_in_bounds(GPSCoord[0], GPSCoord[1])):
             cell = self.gps_to_grid(GPSCoord[0], GPSCoord[1])
@@ -38,8 +49,10 @@ class BayesGrid:
             likelihood = np.ones(self.Grid.shape)
             likelihood[cell] = EVIDENCE
             self.update_grid_with_evidence(likelihood)
+            return True
         else:
             print("GPS Coordinate Out of Bounds")
+            return False
 
     def update_grid_with_evidence(self, evidence_grid):
         """ Update the grid probabilities based on new evidence using Bayes' Theorem. """
@@ -63,32 +76,32 @@ class BayesGrid:
         else:
             return False
 
-    def save_to_file(filename="grid_state.json"):
-        if BayesGrid.Grid is not None:
-            # Construct the path to the Constants folder dynamically
-            current_dir = os.path.dirname(__file__)
-            constants_dir = os.path.join(current_dir, "Constants")
-            # Ensure the Constants directory exists
-            os.makedirs(constants_dir, exist_ok=True)
-            file_path = os.path.join(constants_dir, filename)
+    # def save_to_file(filename="grid_state.json"):
+    #     if BayesGrid.Grid is not None:
+    #         # Construct the path to the Constants folder dynamically
+    #         current_dir = os.path.dirname(__file__)
+    #         constants_dir = os.path.join(current_dir, "Constants")
+    #         # Ensure the Constants directory exists
+    #         os.makedirs(constants_dir, exist_ok=True)
+    #         file_path = os.path.join(constants_dir, filename)
 
-            with open(file_path, 'w') as file:
-                json.dump(BayesGrid.Grid.tolist(), file)
-        else:
-            print("Grid is not initialized.")
+    #         with open(file_path, 'w') as file:
+    #             json.dump(BayesGrid.Grid.tolist(), file)
+    #     else:
+    #         print("Grid is not initialized.")
 
-    def load_from_file(filename="grid_state.json"):
-        # Construct the path to the Constants folder dynamically
-        current_dir = os.path.dirname(__file__)
-        constants_dir = os.path.join(current_dir, "Constants")
-        file_path = os.path.join(constants_dir, filename)
+    # def load_from_file(filename="grid_state.json"):
+    #     # Construct the path to the Constants folder dynamically
+    #     current_dir = os.path.dirname(__file__)
+    #     constants_dir = os.path.join(current_dir, "Constants")
+    #     file_path = os.path.join(constants_dir, filename)
 
-        try:
-            with open(file_path, 'r') as file:
-                grid_list = json.load(file)
-                BayesGrid.Grid = np.array(grid_list)
-        except FileNotFoundError:
-            print(f"File {filename} not found in {constants_dir}.")
+    #     try:
+    #         with open(file_path, 'r') as file:
+    #             grid_list = json.load(file)
+    #             BayesGrid.Grid = np.array(grid_list)
+    #     except FileNotFoundError:
+    #         print(f"File {filename} not found in {constants_dir}.")
 
 
 if __name__ == '__main__':

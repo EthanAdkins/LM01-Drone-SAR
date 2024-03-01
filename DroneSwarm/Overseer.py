@@ -30,6 +30,7 @@ from ServiceRequestors.overseerGetWolfData import getOverseerGetWolfState
 from airsim_ros_pkgs.msg import droneData
 from airsim_ros_pkgs.msg import wolfCommunication
 from airsim_ros_pkgs.msg import updateMap
+from airsim_ros_pkgs.msg import requestGridUpdate
 from ServiceRequestors.wolfGetWolfData import getWolfState
 import ServiceRequestors.overseerGetWolfData as overseerGetWolfData 
 import ServiceRequestors.instructWolf as instructWolf
@@ -47,7 +48,7 @@ from HelperFunctions import calcHelper
 import ServiceRequestors.checkGPU as checkGPU
 import warnings
 import os
-
+from BayesTheorem import BayesGrid 
 
 # for a clearner output
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -61,6 +62,7 @@ MIN_CIRCLE_RADIUS_METERS = configDrones.MIN_CIRCLE_RADIUS_METERS
 DISTANCE_LEAD_OVERSEER_GPS = configDrones.DISTANCE_LEAD_OVERSEER_GPS
 MIN_CIRCLE_PADDING_FOR_SEARCH_HISTORY = configDrones.MIN_CIRCLE_PADDING_FOR_SEARCH_HISTORY
 MAX_WAYPOINT_SAVE_TIME = configDrones.MAX_WAYPOINT_SAVE_TIME
+GRID_SIZE = configDrones.GRID_SIZE
 
 # ros: topics
 OVERSEER_DATA_TOPIC = ros.OVERSEER_DATA_TOPIC
@@ -96,6 +98,7 @@ Waypoint_History = []
 def overseerDroneController(droneName, overseerCount, wolfCount):
     global DM_Drone_Name
     global Cluster
+    global bayes_grid 
     DM_Drone_Name = droneName
     Cluster = droneName
     # use this code to make print calls allowing you to know what process made the print statemnt
@@ -109,6 +112,11 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
     # Wait until GPU is loaded
     checkGPU.checkGPUStatus()
     debugPrint("GPU Loaded")
+
+    # Start the initial Bayes Theorem probability grid
+    print("Starting Bayes")
+    bayes_grid = BayesGrid(GRID_SIZE)
+    print("Initial Bayes Grid:\n", BayesGrid.Grid)
 
     # Get wolf cluster
 
@@ -248,7 +256,18 @@ def overseerCommunicationSubscriber():
     rospy.Subscriber(OVERSEER_COMMUNICATION_TOPIC, String, handleOverseerCommunication, ())
     rospy.Subscriber(ros.END_LOOP_TOPIC, String, handleEnd)
     rospy.Subscriber(ros.WOLF_COMMUNICATION_TOPIC, wolfCommunication, handleWolfCommunication)
+    rospy.Subscriber(ros.REQUEST_GRID_UPDATE_TOPIC, requestGridUpdate, handleRequestGridUpdate)
     rospy.spin()
+
+def handleRequestGridUpdate(data):
+    searchOperationID = data.searchOperationID
+    longitude = data.longitude
+    latitude = data.latitude
+    result = bayes_grid.apply_evidence_to_cell((latitude, longitude), searchOperationID)
+    if(result):
+        print("WolfUpdated: ", bayes_grid.Grid)
+    else:
+        print("GridUpdateFailed")
 
 def handleWolfCommunication(data):
     # Grabs strings from data object

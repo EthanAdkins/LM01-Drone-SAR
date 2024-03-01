@@ -1,0 +1,3 @@
+int32 searchOperationID
+float64 latitude
+float64 longitude
