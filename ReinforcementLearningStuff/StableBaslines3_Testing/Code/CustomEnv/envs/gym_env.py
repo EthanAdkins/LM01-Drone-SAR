@@ -155,11 +155,19 @@ F
         quad_offset = self.getActionChange(action)
         
         self.drone.startRecording()
-        self.drone.moveByVelocityAsync(quad_offset[0],
-                                       quad_offset[1],
-                                       quad_offset[2],
-                                       0.5).join()
-        # self.drone.stopRecording()
+        # self.drone.moveByVelocityAsync(quad_offset[0],
+        #                                quad_offset[1],
+        #                                quad_offset[2],
+        #                                0.5).join()
+        quad_vel = self.drone.getMultirotorState().kinematics_estimated.linear_velocity
+        self.drone.moveByVelocityAsync(
+                quad_vel.x_val + quad_offset[0],
+                quad_vel.y_val + quad_offset[1],
+                quad_vel.z_val + quad_offset[2],
+                0.5,
+            ).join()
+        self.drone.stopRecording()
+
 
         return
     
@@ -216,7 +224,7 @@ F
         #     rotate = 1
         #     quad_offset = 30
         # else:
-            quad_offset = (0, 0, 0)
+            # quad_offset = (0, 0, 0)
         print(action)
         # return quad_offset, rotate
         return quad_offset
@@ -293,20 +301,20 @@ F
 
         self.doAction(chosenAction)
         
-        # obs = self.getObservation(chosenAction)
-        obsAq = self.getObservation(chosenAction)
-        obs = obsAq[0]
+        obs = self.getObservation(chosenAction)
+        # obsAq = self.getObservation(chosenAction)
+        # obs = obsAq[0]
 
         # reward, done = self.calculateReward(chosenAction)
         reward, terminated = self.calculateReward(chosenAction)
 
         #  -- Sometimes image bounces over obstacles once collision triggers --
         if terminated:
-           mean1 = np.mean(self.state["image"])
-           mean2 = np.mean(self.info["prev_image"])
+            mean1 = np.mean(self.state["image"])
+            mean2 = np.mean(self.info["prev_image"])
 
-           if mean2 > mean1:
-            self.state["image"] = self.info["prev_image"]
+            if mean2 > mean1:
+                self.state["image"] = self.info["prev_image"]
 
         info = self.info
 
@@ -328,8 +336,8 @@ F
         self.startFlight()
         self.drone.simPause(True)
 
-        # return self.getObservation(chosenAction=-1), self.info
-        return self.getObservation(chosenAction=-1)
+        return self.getObservation(chosenAction=-1), self.info
+        # return self.getObservation(chosenAction=-1)
     
     def randomiseObjects(self):
         for pos in self.VertPos:
@@ -367,7 +375,7 @@ F
         
 
     def getImageObs(self):
-        my_path = "F:/Documents/RLModel_Pics/"
+        my_path = "C:/Users/andre/Desktop/ThesisUnReal/TestImages2/"
         isExist = os.path.exists(my_path)
 
         if not isExist:
@@ -464,10 +472,10 @@ F
 
     def getObservation(self, chosenAction):
 
-        # self.drone.simPause(True)
+        self.drone.simPause(True)
         image = self.getImageObs()
         # image_path = "TestImages2"
-        image_path = "F:/Documents/RLModel_Pics/"
+        image_path = "C:/Users/andre/Desktop/ThesisUnReal/TestImages2/"
 
         airsim.write_png(os.path.normpath(f'{image_path}/imageChanged.png'), image)
         self.info["prev_image"] = self.state["image"] 
@@ -500,12 +508,13 @@ F
         ah = np.insert(ah, 0, chosenAction)
         ah = ah[:-1]
         self.state["action_history"] = ah
-    
-        # return self.state
-        obs = self.state
-        info = self.info
+        print(self.state["action_history"])
 
-        return obs, info
+        return self.state
+        # obs = self.state
+        # info = self.info
+
+        # return obs, info
     
     def disconnect(self):
         self.drone.enableApiControl(False)
