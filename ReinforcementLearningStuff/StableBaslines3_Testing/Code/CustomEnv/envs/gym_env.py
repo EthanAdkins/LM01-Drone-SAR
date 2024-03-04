@@ -65,7 +65,7 @@ class drone_env(gymnasium.Env):
 
         # -- set the Observation Space --
         self.observation_space = spaces.Dict({
-            "image": spaces.Box(0, 255, shape=(self.img_height, self.img_width, 1), dtype=np.uint8),
+            "image": spaces.Box(0, 255, shape=(self.img_height, self.img_width, 3), dtype=np.uint8),
             "velocity": spaces.Box(low=np.array([-np.inf for _ in range(3)]), 
                                     high=np.array([np.inf for _ in range(3)]),
                                     dtype=np.float64),
@@ -83,7 +83,7 @@ class drone_env(gymnasium.Env):
         # -- set internally state and info --
 
         self.state = {
-            "image": np.zeros([self.img_height , self.img_width, 1], dtype=np.uint8),
+            "image": np.zeros([self.img_height , self.img_width, 3], dtype=np.uint8),
             "velocity": np.zeros(3),
             "prev_relative_distance": np.zeros(3),
             "relative_distance": np.zeros(3),
@@ -91,12 +91,12 @@ class drone_env(gymnasium.Env):
         }
 
         self.info = {
-            "prev_image": np.zeros([self.img_height , self.img_width, 1], dtype=np.uint8),
+            "prev_image": np.zeros([self.img_height , self.img_width, 3], dtype=np.uint8),
             "collision": False,
             "position": np.zeros(3),
             "prev_position": np.zeros(3),
             "goal_position": self.goal_position,
-            "goalreached": False
+            "goalreached": False,
         }
 
         """
@@ -154,11 +154,14 @@ F
     def doAction(self, action):
         quad_offset = self.getActionChange(action)
         
-        self.drone.startRecording()
-        self.drone.moveByVelocityAsync(quad_offset[0],
-                                       quad_offset[1],
-                                       quad_offset[2],
-                                       0.5).join()
+        # self.drone.startRecording()
+        quad_vel = self.drone.getMultirotorState().kinematics_estimated.linear_velocity
+        self.drone.moveByVelocityAsync(
+            quad_vel.x_val + quad_offset[0],
+            quad_vel.y_val + quad_offset[1],
+            quad_vel.z_val + quad_offset[2],
+            0.5,
+        ).join()
         # self.drone.stopRecording()
 
         return
@@ -195,27 +198,6 @@ F
         elif action == 5:
             quad_offset = (0, 0, -self.step_length)
         else:
-            quad_offset = (0, 0, 0)
-        # rotate = 0
-        # if action == 0:
-        #     quad_offset = (self.step_length, 0, 0)
-        # elif action == 1:
-        #     quad_offset = (0, self.step_length, 0)
-        # elif action == 2:
-        #     quad_offset = (0, 0, self.step_length)
-        # elif action == 3:
-        #     quad_offset = (-self.step_length, 0, 0)
-        # elif action == 4:
-        #     quad_offset = (0, -self.step_length, 0)
-        # elif action == 5:
-        #     quad_offset = (0, 0, -self.step_length)
-        # elif action == 6:
-        #     rotate = 1
-        #     quad_offset = -30
-        # elif action == 7:
-        #     rotate = 1
-        #     quad_offset = 30
-        # else:
             quad_offset = (0, 0, 0)
         print(action)
         # return quad_offset, rotate
@@ -361,106 +343,53 @@ F
         self.drone.armDisarm(True) 
 
         print("System update: Drone has successfully been reset")
-        self.drone.startRecording()
         self.drone.moveByVelocityAsync(0, 0, 0, 10).join()
-        self.drone.stopRecording()
         
 
     def getImageObs(self):
-        my_path = "F:/Documents/RLModel_Pics/"
-        isExist = os.path.exists(my_path)
+        image_path = "F:/Documents/RLModel_Pics"
 
-        if not isExist:
-            os.makedirs(my_path)
+        num=0
+        images = []
+        for _ in range(3):
+            time.sleep(0.002)
+            responses = self.drone.simGetImages(
+                    [airsim.ImageRequest("0", airsim.ImageType.DepthPerspective, pixels_as_float=True, compress=False)])
+            response = responses[0]
+            
+            # img1d = np.array(response.image_data_float, dtype=np.float64)
+            # img1d = img1d * 3.5 + 30
+            # img1d[img1d > 255] = 255
+            
+            # image = np.reshape(img1d, (responses[0].height, responses[0].width))
+            # image_array = Image.fromarray(image).resize((150, 150)).convert("L")
 
-        files = glob.glob(my_path + "*")
-        # print(files)
+            # im_final = np.array(image_array)
+            # im_final = im_final.reshape([150, 150, 1])
+            # images.append(im_final)
 
-        imagelocation = files[0] + "/images/"
-
-        imageChangedlocation = files[0] + "/imagesChanged/"
-        isExist = os.path.exists(imageChangedlocation)
-        if not isExist:
-            os.makedirs(imageChangedlocation)
-
-        mytime = 0
-        start_time2 = time.time()
-        while(True):
-            time.sleep(0.001)
-            if len(os.listdir(imagelocation)) >= 3:
-                break
-            if len(os.listdir(imagelocation)) < 3:
-                mytime = time.time() - start_time2
-                print("My Time:"+str(mytime))
-                if(mytime > 1):
-                    break
-
-        imageL = glob.glob(imagelocation + "*")
-        # print(imageL)
-        imageL.sort(key=os.path.getmtime)
-
-        num = 0
-        im_final = np.zeros([self.img_height, self.img_width, 1])
-
-        for imL in imageL:
-            im = None
-            while(True):
-                time.sleep(0.002)
-                try:
-                    im = cv2.imread(imL)
-                except:
-                    #time.sleep(0.005)
-                    pass
-                if im is not None:
-                    break
-
-            from PIL import Image
-
-            im = np.expand_dims(im, axis=2)
-            im = np.array(im, dtype=np.float64)
+            im = np.array(response.image_data_float, dtype=np.float64)
             img1d = 255 / np.maximum(np.ones(im.shape), im)
-            img2d = np.reshape(img1d, (im.shape[0], im.shape[1]))
+            img2d = np.reshape(img1d, (responses[0].height, responses[0].width))
             
             image = Image.fromarray(img2d)
-            image = image.rotate(180)
-            image = image.transpose(method=Image.Transpose.FLIP_LEFT_RIGHT)
-
-            # image_path = "TestImages"
-            image_path = imageChangedlocation
-
             im_final = np.array(image.resize((150, 150)).convert("L"))
             
             im_final = im_final.reshape([150, 150, 1])
+            images.append(im_final)
+
+
             airsim.write_png(os.path.normpath(f'{image_path}/imageChanged{num}.png'), im_final)
             # print(os.path.normpath(f'{image_path}/imageChanged{num}.png'))
             num+=1
 
-        folder = my_path
-        mytime = 0
-        start_time2 = time.time()
 
-        for filename in os.listdir(folder):
-            file_path = os.path.join(folder, filename)
-            flag = True
-            while(True):
-                try:
-                    flag = True
-                    if os.path.isfile(file_path) or os.path.islink(file_path):
-                        os.unlink(file_path)
-                    elif os.path.isdir(file_path):
-                        shutil.rmtree(file_path)
-                except Exception as e:
-                    #print('Failed to delete %s. Reason: %s' % (file_path, e))
-                    time.sleep(0.001)
-                    flag = False
-                    mytime = time.time() - start_time2
-                    if(mytime > 1):
-                        break
+        stacked_frames = cv2.merge([images[-3], images[-2], images[-1]])
+        airsim.write_png(os.path.normpath(f'{image_path}/imageChangedStacked.png'), stacked_frames)
+ 
+        return stacked_frames
 
-                if(flag):
-                    break
 
-        return im_final
 
     def getObservation(self, chosenAction):
 
@@ -469,7 +398,7 @@ F
         # image_path = "TestImages2"
         image_path = "F:/Documents/RLModel_Pics/"
 
-        airsim.write_png(os.path.normpath(f'{image_path}/imageChanged.png'), image)
+        # airsim.write_png(os.path.normpath(f'{image_path}/imageChanged.png'), image)
         self.info["prev_image"] = self.state["image"] 
         self.state["image"] = image
 
