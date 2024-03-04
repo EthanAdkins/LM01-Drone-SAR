@@ -107,7 +107,6 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
                     nn.ReLU()
                 )
                 total_concat_size += 16
-        print(extractors)
         self.extractors = nn.ModuleDict(extractors)
 
         # Update the features dim manually
