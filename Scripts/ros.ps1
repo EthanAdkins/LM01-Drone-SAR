@@ -19,4 +19,7 @@ Add-Content -Path $profilePath -Value 'source /opt/ros/melodic/setup.bash'
 docker build -t airsim-ros-pytorch-newest -f Dockerfile-ROS-Pytorch-Newest .
 
 # Run Docker Container
-docker run --rm -it --net="host" -v //c/SD2/Colosseum:/home/testuser/AirSim airsim-ros-pytorch-newest:latest bash
+docker run --rm -it --net="host" -v //c/SD2/Colosseum:/home/testuser/AirSim airsim-ros-pytorch-newest:latest bash -c "cd AirSim/ros && export ROS_HOSTNAME=172.17.0.1 && source devel/setup.bash && roslaunch airsim_ros_pkgs airsim_node.launch"
+
+
+#Read-Host -Prompt "Press any key to continue"
