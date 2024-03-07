@@ -64,6 +64,7 @@ class drone_env(gymnasium.Env):
 
 
         # -- set the Observation Space --
+        #  to do, add altittude and orientation?
         self.observation_space = spaces.Dict({
             "image": spaces.Box(0, 255, shape=(self.img_height, self.img_width, 3), dtype=np.uint8),
             "velocity": spaces.Box(low=np.array([-np.inf for _ in range(3)]), 
@@ -109,8 +110,8 @@ F
         5 - Move Up
         6 - Do Nothing
         """
-        self.action_space = spaces.Discrete(6)
-        # self.action_space = spaces.Discrete(9) # add rotation 
+        # self.action_space = spaces.Discrete(6)
+        self.action_space = spaces.Discrete(9) # add rotation 
 
         #  -- set goal position --
         # position = Vector3r(self.goal_position[0], self.goal_position[1], self.goal_position[2])
@@ -122,11 +123,8 @@ F
         self.getParentObjPos()
 
         # -- set image request --
-        # self.image_request = airsim.ImageRequest(
-        #     "0", airsim.ImageType.DepthPerspective, True, False
-        # )
-        self.image_request = self.drone.simGetImages([airsim.ImageRequest("0",airsim.ImageType.DepthPerspective, True, False)])
-   
+        self.image_request = self.drone.simGetImages([airsim.ImageRequest("front_center", airsim.ImageType.DepthPerspective, True, False), 
+                                                    airsim.ImageRequest("front_center", airsim.ImageType.Scene, False, False)])
     
     def getParentObjPos(self):
         VertNames = ["ParentVerticalFirstRow", "ParentVerticalSecondRow", "ParentVerticalThirdRow", "ParentVerticalFourthRow"]
@@ -151,40 +149,58 @@ F
         self.goals.append(-99)
         print(self.goals)
 
-    def doAction(self, action):
-        quad_offset = self.getActionChange(action)
-        
-        # self.drone.startRecording()
-        quad_vel = self.drone.getMultirotorState().kinematics_estimated.linear_velocity
-        self.drone.moveByVelocityAsync(
-            quad_vel.x_val + quad_offset[0],
-            quad_vel.y_val + quad_offset[1],
-            quad_vel.z_val + quad_offset[2],
-            0.5,
-        ).join()
-        # self.drone.stopRecording()
-
-        return
-    
-    # '''modified doAction'''
     # def doAction(self, action):
-    #     quad_offset, rotate = self.getActionChange(action)
+    #     quad_offset = self.getActionChange(action)
+        
     #     self.drone.startRecording()
+    #     quad_vel = self.drone.getMultirotorState().kinematics_estimated.linear_velocity
+    #     self.drone.moveByVelocityAsync(
+    #         quad_vel.x_val + quad_offset[0],
+    #         quad_vel.y_val + quad_offset[1],
+    #         quad_vel.z_val + quad_offset[2],
+    #         0.5,
+    #     ).join()
+    #     self.drone.stopRecording()
+
+    #     return
+    
+    '''modified doAction'''
+    def doAction(self, action):
+        quad_offset, rotate = self.getActionChange(action)
+        self.drone.startRecording()
 
 
-    #     if rotate == 0:
-    #         quad_vel = self.drone.getMultirotorState().kinematics_estimated.linear_velocity
-    #         self.drone.moveByVelocityAsync(
-    #             quad_vel.x_val + quad_offset[0],
-    #             quad_vel.y_val + quad_offset[1],
-    #             quad_vel.z_val + quad_offset[2],
-    #             0.5,
-    #         ).join()
-    #     else:
-    #         self.drone.rotateByYawRateAsync(quad_offset, .5).join()
-    #     # self.drone.stopRecording()
+        if rotate == 0:
+            quad_vel = self.drone.getMultirotorState().kinematics_estimated.linear_velocity
+            self.drone.moveByVelocityAsync(
+                quad_vel.x_val + quad_offset[0],
+                quad_vel.y_val + quad_offset[1],
+                quad_vel.z_val + quad_offset[2],
+                0.5,
+            ).join()
+        else:
+            self.drone.rotateByYawRateAsync(quad_offset, .5).join()
+        self.drone.stopRecording()
     
     def getActionChange(self, action):
+        # if action == 0:
+        #     quad_offset = (self.step_length, 0, 0)
+        # elif action == 1:
+        #     quad_offset = (0, self.step_length, 0)
+        # elif action == 2:
+        #     quad_offset = (0, 0, self.step_length)
+        # elif action == 3:
+        #     quad_offset = (-self.step_length, 0, 0)
+        # elif action == 4:
+        #     quad_offset = (0, -self.step_length, 0)
+        # elif action == 5:
+        #     quad_offset = (0, 0, -self.step_length)
+        # else:
+        #     quad_offset = (0, 0, 0)
+        # print(action)
+        # # return quad_offset, rotate
+        # return quad_offset
+        rotate = 0
         if action == 0:
             quad_offset = (self.step_length, 0, 0)
         elif action == 1:
@@ -197,6 +213,12 @@ F
             quad_offset = (0, -self.step_length, 0)
         elif action == 5:
             quad_offset = (0, 0, -self.step_length)
+        elif action == 6:
+            rotate = 1
+            quad_offset = -30
+        elif action == 7:
+            rotate = 1
+            quad_offset = 30
         else:
             quad_offset = (0, 0, 0)
         # rotate = 0
@@ -221,8 +243,7 @@ F
         # else:
             # quad_offset = (0, 0, 0)
         print(action)
-        # return quad_offset, rotate
-        return quad_offset
+        return quad_offset, rotate
 
     
     def get_distance(self):
@@ -364,52 +385,163 @@ F
         self.drone.armDisarm(True) 
 
         print("System update: Drone has successfully been reset")
+        self.drone.startRecording()
         self.drone.moveByVelocityAsync(0, 0, 0, 10).join()
+        self.drone.stopRecording()
         
 
     def getImageObs(self):
-        my_path = "C:/Users/andre/Desktop/ThesisUnReal/TestImages2/"
-        isExist = os.path.exists(my_path)
+        my_path = "F:/Documents/RLModel_Pics/"
 
-        num=0
-        images = []
-        for _ in range(3):
-            time.sleep(0.002)
-            responses = self.drone.simGetImages(
-                    [airsim.ImageRequest("0", airsim.ImageType.DepthPerspective, pixels_as_float=True, compress=False)])
-            response = responses[0]
+        # num=0
+        # images = []
+        # for _ in range(3):
+        #     time.sleep(0.002)
+        #     responses = self.drone.simGetImages(
+        #             [airsim.ImageRequest("0", airsim.ImageType.DepthPerspective, pixels_as_float=True, compress=False)])
+        #     response = responses[0]
             
-            # img1d = np.array(response.image_data_float, dtype=np.float64)
-            # img1d = img1d * 3.5 + 30
-            # img1d[img1d > 255] = 255
+        #     img1d = np.array(response.image_data_float, dtype=np.float64)
+        #     img1d = img1d * 3.5 + 30
+        #     img1d[img1d > 255] = 255
             
-            # image = np.reshape(img1d, (responses[0].height, responses[0].width))
-            # image_array = Image.fromarray(image).resize((150, 150)).convert("L")
+        #     image = np.reshape(img1d, (responses[0].height, responses[0].width))
+        #     image_array = Image.fromarray(image).resize((150, 150)).convert("L")
 
-            # im_final = np.array(image_array)
+        #     im_final = np.array(image_array)
+        #     im_final = im_final.reshape([150, 150, 1])
+        #     images.append(im_final)
+
+            # im = np.array(response.image_data_float, dtype=np.float64)
+            # img1d = 255 / np.maximum(np.ones(im.shape), im)
+            # img2d = np.reshape(img1d, (responses[0].height, responses[0].width))
+            
+            # image = Image.fromarray(img2d)
+            # im_final = np.array(image.resize((150, 150)).convert("L"))
+            
             # im_final = im_final.reshape([150, 150, 1])
             # images.append(im_final)
 
-            im = np.array(response.image_data_float, dtype=np.float64)
-            img1d = 255 / np.maximum(np.ones(im.shape), im)
-            img2d = np.reshape(img1d, (responses[0].height, responses[0].width))
-            
-            image = Image.fromarray(img2d)
-            im_final = np.array(image.resize((150, 150)).convert("L"))
-            
-            im_final = im_final.reshape([150, 150, 1])
-            images.append(im_final)
 
-
-            airsim.write_png(os.path.normpath(f'{image_path}/imageChanged{num}.png'), im_final)
+            # airsim.write_png(os.path.normpath(f'{image_path}/imageChanged{num}.png'), im_final)
             # print(os.path.normpath(f'{image_path}/imageChanged{num}.png'))
-            num+=1
+            # num+=1
 
 
-        stacked_frames = cv2.merge([images[-3], images[-2], images[-1]])
-        airsim.write_png(os.path.normpath(f'{image_path}/imageChangedStacked.png'), stacked_frames)
+        # stacked_frames = cv2.merge([images[-3], images[-2], images[-1]])
+        # airsim.write_png(os.path.normpath(f'{image_path}/imageChangedStacked.png'), stacked_frames)
+
+        # isExist = os.path.exists(my_path)
+
+        # if not isExist:
+        #     os.makedirs(my_path)
+
+        # files = glob.glob(my_path + "*")
+        # print(files)
+        # # print(files)
+        # imagelocation = files[0] + "/images/"
+        # mytime = 0
+        # start_time2 = time.time()
+        # while(True):
+        #     time.sleep(0.001)
+        #     if len(os.listdir(imagelocation)) >= 3:
+        #         break
+        #     if len(os.listdir(imagelocation)) < 3:
+        #         mytime = time.time() - start_time2
+        #         print("My Time:"+str(mytime))
+        #         if(mytime > 1):
+        #             break
+
+        # imageL = glob.glob(imagelocation + "*")
+        # imageL.sort(key=os.path.getmtime)
+
+        # num = 0
+        # im_final = np.zeros([self.img_height, self.img_width, 1])
+
+        # images = []
+        # for imL in imageL:
+        #     im = None
+        #     while(True):
+        #         time.sleep(0.002)
+        #         try:
+        #             im = cv2.imread(imL)
+        #         except:
+        #             #time.sleep(0.005)
+        #             pass
+        #         if im is not None:
+        #             break
+
+        #     from PIL import Image
+
+        #     im = np.expand_dims(im, axis=2)
+        #     im = np.array(im, dtype=np.float64)
+        #     img1d = 255 / np.maximum(np.ones(im.shape), im)
+        #     img2d = np.reshape(img1d, (im.shape[0], im.shape[1]))
+            
+        #     image = Image.fromarray(img2d)
+        #     image = image.rotate(180)
+        #     image = image.transpose(method=Image.Transpose.FLIP_LEFT_RIGHT)
+
+        #     # image_path = "TestImages"
+
+        #     im_final = np.array(image.resize((150, 150)).convert("L"))
+            
+        #     im_final = im_final.reshape([150, 150, 1])
+        #     images.append(im_final)
+        #     #airsim.write_png(os.path.normpath(f'{image_path}/imageChanged{num}.png'), im_final)
+        #     num+=1
+        #     if num > 3:
+        #         break
+        
+        # stacked_frames = np.zeros([self.img_height, self.img_width, 3])        
+     
+        # if len(images) >= 3:
+        #     stacked_frames = cv2.merge([images[-3], images[-2], images[-1]])
+        # elif len(images) == 2:
+        #     stacked_frames = cv2.merge([images[-2], images[-2], images[-1]])
+        # else:
+        #     stacked_frames = cv2.merge([images[-1], images[-1], images[-1]])
+        # airsim.write_png(os.path.normpath(f'{my_path}/imageChangedStacked.png'), stacked_frames)
+
+        # folder = my_path
+        # mytime = 0
+        # start_time2 = time.time()
+
+        # for filename in os.listdir(folder):
+        #     file_path = os.path.join(folder, filename)
+        #     flag = True
+        #     while(True):
+        #         try:
+        #             flag = True
+        #             if os.path.isfile(file_path) or os.path.islink(file_path):
+        #                 os.unlink(file_path)
+        #             elif os.path.isdir(file_path):
+        #                 shutil.rmtree(file_path)
+        #         except Exception as e:
+        #             #print('Failed to delete %s. Reason: %s' % (file_path, e))
+        #             time.sleep(0.001)
+        #             flag = False
+        #             mytime = time.time() - start_time2
+        #             if(mytime > 1):
+        #                 break
+
+        #         if(flag):
+        #             break
+        request = self.image_request
+        depth_img_in_meters = airsim.list_to_2d_float_array(request[0].image_data_float, request[0].width, request[0].height)
+        depth_img_in_meters = depth_img_in_meters.reshape(request[0].height, request[0].width, 1)
+        depth_8bit_lerped = np.interp(depth_img_in_meters, (0, 100), (0, 255))
+        airsim.write_png(os.path.normpath(f'{my_path}/imageChangedDepth.png'), depth_8bit_lerped)
+
+        rgb = np.frombuffer(request[1].image_data_uint8, dtype=np.uint8)
+        rgb_2d = np.reshape(rgb, (request[1].height, request[1].width, 3))
+        airsim.write_png(os.path.normpath(f'{my_path}/imageChangedRGB.png'), rgb_2d)
+
+        rgb_d = np.concatenate((rgb_2d, depth_8bit_lerped), axis=-1)
+        airsim.write_png(os.path.normpath(f'{my_path}/imageStacked.png'), rgb_d)
+
+        return rgb_d
  
-        return stacked_frames
 
 
 
