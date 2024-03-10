@@ -92,6 +92,7 @@ GROUP_1_SEARCH = 'Constants/Group1Spiral.txt'
 Cluster = EMPTY_CLUSTER
 End_Loop = False
 Waypoint_History = []
+global bayes_grid
 
 # Main Process Start ----------------------------------------------
 # Main function for the overseer drone
@@ -186,8 +187,21 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
         # TODO: Update assigned wolf drones on search area
 
         # Gets waypoint and calculates movement vector to next waypoint
-        endWaypoint = getNewWaypoint(droneName)
-        startWaypoint = getLastWaypoint(droneName)
+        max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=-1)
+        if (max_prob_index != None):
+            # There is a significant probable location
+            GPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
+            endWaypoint = [GPS[1], GPS[0]]
+            startWaypoint = getLastWaypoint(droneName)
+            #print("GPS Location: ", GPS)
+            # if (allDronesAtWaypointCheck(droneName)):
+            #     print("Manual Search at: ", GPS)
+            # startSearchAtCoordinates(droneName, GPS[0], GPS[1]) # Adjust this to only be done when at the waypoint for the drones.
+        else:
+            # There is not a significant probable location
+            endWaypoint = getNewWaypoint(droneName)
+            startWaypoint = getLastWaypoint(droneName)
+
         startGPS = calcHelper.fixDegenerateCoordinate(startWaypoint)
         endGPS = calcHelper.fixDegenerateCoordinate(endWaypoint)
         # debugPrint("Start Longitude: " + str(startGPS.longitude) + "Start Latitude: " + str(startGPS.latitude) + "End Longitude: "+ str(endGPS.longitude) + "End Latitude: " + str(endGPS.latitude))
@@ -228,7 +242,8 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
         # client.moveByVelocityZAsync(vector[1], vector[0], -10, duration = 1, vehicle_name="TestOverseer")
 
         # If all drones make it to the waypoint, more to next waypoint
-        allDronesAtWaypoint(droneName)
+        if (allDronesAtWaypoint(droneName)):
+            startSearchAtCoordinates(droneName, GPS[0], GPS[1])
 
         # TODO: Add in Overseer behavior
         # TODO: Creeping Line lead behavior
@@ -260,9 +275,12 @@ def overseerCommunicationSubscriber():
     rospy.spin()
 
 def handleRequestGridUpdate(data):
+    global bayes_grid
+
     searchOperationID = data.searchOperationID
     longitude = data.longitude
     latitude = data.latitude
+    print("Latitude: ", latitude, "Longitude: ", longitude)
     result = bayes_grid.apply_evidence_to_cell((latitude, longitude), searchOperationID)
     if(result):
         print("WolfUpdated: ", bayes_grid.Grid)
@@ -535,3 +553,49 @@ def allDronesAtWaypoint(overseerName):
     WAYPOINT_INDEX = WAYPOINT_INDEX + 1
     # print("Drones:", DM_Wolfs_Cluster, "Made it to waypoint:", WAYPOINT_INDEX)
     return 1
+
+def startSearchAtCoordinates(droneName, targetLat, targetLon):
+    global Cluster
+    threadClient = airsim.MultirotorClient(LOCAL_IP)
+
+    # Convert the target coordinates into the expected format for the search
+    targetGPS = [targetLon, targetLat]  # Assuming [longitude, latitude] format
+
+
+    # Generate a search circle around the provided GPS coordinate
+    radius = MIN_CIRCLE_RADIUS_GPS
+    circle = clustering.circle(radius, targetGPS, [targetGPS])
+    circleList = [circle]  # Assuming there's only one target location
+    
+    wolfDataList = overseerGetWolfData.getWolfDataOfCluster(Cluster)
+    cleanWaypointHistory(wolfDataList)
+    waypoint = circle.avgCenter
+    radius = circle.radius
+    
+    currentGPS = threadClient.getGpsData(gps_name="", vehicle_name=droneName).gnss.geo_point
+
+    optimalDroneName = algoHelper.getOptimalWolf(waypoint, wolfDataList, droneName)
+    if optimalDroneName != "":
+        taskGroup = SEARCH_TASK_GROUP + optimalDroneName
+        updateWayPointHistory(waypoint, taskGroup, radius)
+        
+        gpsDataObject = GPS()
+        gpsDataObject.longitude = waypoint[0]
+        gpsDataObject.latitude = waypoint[1]
+        
+        circleRadiusMeters = (radius * MIN_CIRCLE_RADIUS_METERS) / MIN_CIRCLE_RADIUS_GPS
+        searchTimeS = (radius * 15) / MIN_CIRCLE_RADIUS_GPS
+        taskGroup = EMPTY_CLUSTER  # Indicating task initiation by the overseer
+        requestStatus = instructWolf.sendWolfSearchBehaviorRequest(
+            WOLF_DRONE_SERVICE + str(optimalDroneName),
+            gpsDataObject,
+            radius,
+            circleRadiusMeters,
+            30,  # Assuming spreadTimeS is constant
+            searchTimeS,
+            taskGroup
+        )
+        print("Manual Request bool:", requestStatus, "From Overseer:", droneName, "To:", optimalDroneName)
+    else:
+        #print("No optimal drone found for the waypoint:", waypoint)
+        return

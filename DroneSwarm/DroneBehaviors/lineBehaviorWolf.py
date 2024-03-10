@@ -126,8 +126,14 @@ def subWaypointCalculator(currentWaypoint, previousWaypoint, radius, droneName, 
 
     # Gets normalized difference vector
     vectorVal = sqrt(waypointDiffX**2 + waypointDiffY**2)
-    xDirection = (waypointDiffX/vectorVal) * radius
-    yDirection = (waypointDiffY/vectorVal) * radius
+
+    # Check if vectorVal is 0 to avoid dividing by 0
+    if vectorVal == 0:
+        xDirection = 0
+        yDirection = 0
+    else:
+        xDirection = (waypointDiffX/vectorVal) * radius
+        yDirection = (waypointDiffY/vectorVal) * radius
 
     # Calculates horizontal and vertical changes
     horizonalChange = xDirection - yDirection
@@ -181,8 +187,14 @@ def getSubwaypointList(currentWaypoint, previousWaypoint, radius, droneCluster):
 
     # Gets normalized difference vector
     vectorVal = sqrt(waypointDiffX**2 + waypointDiffY**2)
-    xDirection = (waypointDiffX/vectorVal) * radius
-    yDirection = (waypointDiffY/vectorVal) * radius
+    
+    # Check if vectorVal is 0 to avoid dividing by 0
+    if vectorVal == 0:
+        xDirection = 0
+        yDirection = 0
+    else:
+        xDirection = (waypointDiffX/vectorVal) * radius
+        yDirection = (waypointDiffY/vectorVal) * radius
 
     # Calculates horizontal and vertical changes
     horizonalChange = xDirection - yDirection

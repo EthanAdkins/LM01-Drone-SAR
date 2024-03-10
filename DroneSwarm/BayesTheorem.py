@@ -14,16 +14,34 @@ grid_index_height = configDrones.grid_index_height
 
 class BayesGrid:
     Grid = None
-
+    
     def __init__(self, size):
+        self.seen_search_ids = set()
         if BayesGrid.Grid is None:
             print("Initializing Grid")
             BayesGrid.Grid = self.initializeGrid(size)
-            self.seen_search_ids = set()
+            #BayesGrid.save_to_file()
 
     def initializeGrid(self, size):
         """ Initialize a uniform probability grid. """
         grid = np.full((size[0], size[1]), 1/(size[0]*size[1]))  # Uniform distribution (All grid values summed == 1)
+        return grid
+
+    def initialize_clustered_grid(self, size, num_clusters=3, spread=3):
+        """ Initialize a probability grid with clustered high probability areas. """
+        grid = np.zeros((size[0], size[1]))
+
+        # Randomly choose cluster centers
+        cluster_centers = [np.random.randint(0, min(size[0], size[1]), size=2) for _ in range(num_clusters)]
+
+        for i in range(size[0]):
+            for j in range(size[1]):
+                # Calculate probability based on distance to nearest cluster center
+                min_distance = min([np.linalg.norm(np.array([i, j]) - center) for center in cluster_centers])
+                grid[i, j] = np.exp(-min_distance / spread)
+
+        # Normalize the grid so probabilities sum to 1
+        grid /= grid.sum()
         return grid
 
     def find_max_probability_cell(self, significance_threshold=-1):
@@ -37,7 +55,7 @@ class BayesGrid:
         # Set significance_threshold to -1 if you want no threshold
 
         # Flatten the grid to make it easier to work with
-        flat_grid = self.Grid.flatten()
+        flat_grid = BayesGrid.Grid.flatten()
         
         # Sort the flattened grid to find the highest and second-highest probabilities
         sorted_probs = np.sort(flat_grid)
@@ -47,8 +65,8 @@ class BayesGrid:
         # Check if the highest probability is significantly greater than the second highest
         if highest_prob - second_highest_prob > significance_threshold:
             # Find the index of the cell with the highest probability
-            max_prob_index = np.unravel_index(np.argmax(self.Grid), self.Grid.shape)
-            print(f"Most Probable Location: {max_prob_index}, Probability: {highest_prob}")
+            max_prob_index = np.unravel_index(np.argmax(BayesGrid.Grid), BayesGrid.Grid.shape)
+            #print(f"Most Probable Location: {max_prob_index}, Probability: {highest_prob}")
             return max_prob_index, highest_prob
         else:
             print("No significantly most probable location found.")
@@ -69,19 +87,20 @@ class BayesGrid:
         # cell = (row, column)
         if(self.is_in_bounds(GPSCoord[0], GPSCoord[1])):
             cell = self.gps_to_grid(GPSCoord[0], GPSCoord[1])
-            print("Cell (y,x):", cell)
-            likelihood = np.ones(self.Grid.shape)
+            #print("Cell (y,x):", cell)
+            likelihood = np.ones(BayesGrid.Grid.shape)
             likelihood[cell] = EVIDENCE
             self.update_grid_with_evidence(likelihood)
+            #BayesGrid.save_to_file()
             return True
         else:
-            print("GPS Coordinate Out of Bounds")
+            print("GPS Coordinate: ", GPSCoord, " Out of Bounds")
             return False
 
     def update_grid_with_evidence(self, evidence_grid):
         """ Update the grid probabilities based on new evidence using Bayes' Theorem. """
-        new_grid = self.Grid * evidence_grid
-        self.Grid = new_grid / new_grid.sum()
+        new_grid = BayesGrid.Grid * evidence_grid
+        BayesGrid.Grid = new_grid / new_grid.sum()
         #print("Grid: ", self.Grid)
 
     def gps_to_grid(self, latitude, longitude):
@@ -104,11 +123,14 @@ class BayesGrid:
         """ Convert an index of the Bayes grid to the GPS center of that grid index"""
         yIndex = Index[0] 
         xIndex = Index[1]
-        latitude = yIndex * grid_index_height + (grid_index_height / 2.0)
-        longitude = xIndex * grid_index_width + (grid_index_width / 2.0)
+        latitude = yIndex * grid_index_height + (grid_index_height / 2.0) + BOTTOM_LEFT_BOUND[0]
+        longitude = xIndex * grid_index_width + (grid_index_width / 2.0) + BOTTOM_LEFT_BOUND[1]
+        #print("LatitudeConvert: ", latitude, "LongitudeConvert: ", longitude)
         return (latitude, longitude)
 
+
     # def save_to_file(filename="grid_state.json"):
+    #     print("SAVING")
     #     if BayesGrid.Grid is not None:
     #         # Construct the path to the Constants folder dynamically
     #         current_dir = os.path.dirname(__file__)
@@ -140,11 +162,11 @@ if __name__ == '__main__':
     size = (10, 20) # (y,x)
     #startBayes(size, (0.00014477851375283054,-0.0041943628509558415), (0.004516586943213801, 0.004839834080485371))
     bayes_grid = BayesGrid(size)
-    GPSCoord = (0.0024477851375283054,-0.0021943628509558415) # Must be represented as (latitude, longitude)
+    GPSCoord = (0.00036336893522587903, -0.003968507927669811) # Must be represented as (latitude, longitude)
     print(bayes_grid.Grid)
     
-    # gridvalue = bayes_grid.gps_to_grid(GPSCoord[0], GPSCoord[1])
-    # print(gridvalue)
+    gridvalue = bayes_grid.gps_to_grid(GPSCoord[0], GPSCoord[1])
+    print("GRID VALUE: ", gridvalue)
     bayes_grid.apply_evidence_to_cell(GPSCoord,1)
     print(bayes_grid.Grid)
     bayes_grid.apply_evidence_to_cell(GPSCoord,2)
