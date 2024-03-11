@@ -12,6 +12,10 @@ from airsim.types import Pose,Quaternionr,Vector3r
 #warnings.filterwarnings("ignore")
 
 
+        
+
+
+
 collision = False
 drone = airsim.MultirotorClient() 
 drone.confirmConnection()
@@ -54,6 +58,7 @@ target_locations = np.array([[-132.19700622558594, -53.86787796020508, 22.765165
 print("target initial position: ")
 print(drone.simGetObjectPose("character_2").position)
 print("\n")
+
 for _ in range(3):
 # --------------------------------------------------------------------------------------
     
@@ -99,6 +104,11 @@ for _ in range(3):
     # # if collision:
     # drone.simPause(False)
     # collision = False
+
+    distance_sensor_data = drone.getDistanceSensorData("Distance", "Drone1")
+    print(distance_sensor_data)
+    
+
     drone.reset()
     
     #  -- Randomise our drones starting location --
