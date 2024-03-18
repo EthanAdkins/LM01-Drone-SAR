@@ -59,7 +59,7 @@ print("target initial position: ")
 print(drone.simGetObjectPose("character_2").position)
 print("\n")
 
-for _ in range(3):
+for _ in range(5):
 # --------------------------------------------------------------------------------------
     
   
@@ -71,7 +71,7 @@ for _ in range(3):
 
     # drone.startRecording()
     #drone.simPause(False)
-    drone.moveByVelocityAsync(1, 0, 0, 1).join()
+    drone.moveByVelocityAsync(2, 0, 0, 1).join()
     #drone.simPause(True)
 
     start_time = time.time()
@@ -105,42 +105,42 @@ for _ in range(3):
     # drone.simPause(False)
     # collision = False
 
-    distance_sensor_data = drone.getDistanceSensorData("Distance", "Drone1")
+    distance_sensor_data = drone.getDistanceSensorData("Distance", "Drone1").distance
     print(distance_sensor_data)
     
 
-    drone.reset()
+    # drone.reset()
     
-    #  -- Randomise our drones starting location --
-    ry = random.uniform(-9,9)
-    rz = random.uniform(-7,0)
+    # #  -- Randomise our drones starting location --
+    # ry = random.uniform(-9,9)
+    # rz = random.uniform(-7,0)
 
-    print(f"Setting new position to 0, {ry}, {rz}")
-    position = airsim.Vector3r(0, ry, rz)
-    heading = airsim.utils.to_quaternion(0, 0, 0)
-    pose = airsim.Pose(position, heading)
-    drone.simSetVehiclePose(pose, True)
-    drone.enableApiControl(True)
-    drone.armDisarm(True) 
+    # print(f"Setting new position to 0, {ry}, {rz}")
+    # position = airsim.Vector3r(0, ry, rz)
+    # heading = airsim.utils.to_quaternion(0, 0, 0)
+    # pose = airsim.Pose(position, heading)
+    # drone.simSetVehiclePose(pose, True)
+    # drone.enableApiControl(True)
+    # drone.armDisarm(True) 
     
 
-    locpick = random.randint(0,5)
-    target_x = target_locations[locpick, 0]
-    target_y = target_locations[locpick, 1]
-    target_z = target_locations[locpick, 2]
-    print(f"target location randomized: {target_x}, {target_y}, {target_z}")
-    heading = Quaternionr(0, 0, 0, 0)
-    position = Vector3r(target_x, target_y, target_z)
-    pose = Pose(position, heading)
-    drone.simSetObjectPose("character_2", pose, True)
+    # locpick = random.randint(0,5)
+    # target_x = target_locations[locpick, 0]
+    # target_y = target_locations[locpick, 1]
+    # target_z = target_locations[locpick, 2]
+    # print(f"target location randomized: {target_x}, {target_y}, {target_z}")
+    # heading = Quaternionr(0, 0, 0, 0)
+    # position = Vector3r(target_x, target_y, target_z)
+    # pose = Pose(position, heading)
+    # drone.simSetObjectPose("character_2", pose, True)
 
-    print("target new position: ")
-    print(drone.simGetObjectPose("character_2").position)
-    print("\n")
+    # print("target new position: ")
+    # print(drone.simGetObjectPose("character_2").position)
+    # print("\n")
 
-    #print("System update: Drone has successfully been reset")
-    drone.moveByVelocityAsync(0, 0, 0, 20).join()
-    #time.sleep(3)
+    # #print("System update: Drone has successfully been reset")
+    # drone.moveByVelocityAsync(0, 0, 0, 20).join()
+    # #time.sleep(3)
     num+=1
         
     
