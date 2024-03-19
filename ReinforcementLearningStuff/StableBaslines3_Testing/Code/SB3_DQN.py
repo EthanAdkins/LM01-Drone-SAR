@@ -74,10 +74,10 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
         image = observations["image"] / 255.  # Normalize image
         image_features = self.resnet(image)
         image_features = th.flatten(image_features, start_dim=1)
-        # print(image_features)
-        # print(image_features.shape)
+      
         encoded_tensor_list = []
         encoded_tensor_list.append(image_features)
+
         # Process non-image observations
         for key, extractor in self.additional_extractors.items():
             encoded_tensor_list.append(extractor(observations[key]))
@@ -87,119 +87,6 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
 
         return combined_features
     
-    # def __init__(self, observation_space: gymnasium.spaces.Dict):
-    #     # We do not know features-dim here before going over all the items,
-    #     # so put something dummy for now. PyTorch requires calling
-    #     # nn.Module.__init__ before adding modules
-    #     super(CustomCombinedExtractor, self).__init__(observation_space, features_dim=1)
-
-    #     # Define ResNet-18 backbone
-    #     self.resnet = resnet18(pretrained=True)
-    #     self.resnet = nn.Sequential(*list(self.resnet.children())[:-2])
-
-    #     extractors = {}
-
-    #     total_concat_size = 0
-    #     # We need to know size of the output of this extractor,
-    #     # so go over all the spaces and compute output feature sizes
-    #     for key, subspace in observation_space.spaces.items():
-    #         if key == "image":
-    #             # We assume CxHxW images (channels first)
-    #             # Re-ordering will be done by pre-preprocessing or wrapper
-    #             n_input_channels = subspace.shape[0]
-    #             # extractors[key] = nn.Sequential(
-    #             #     nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=4, padding=0),
-    #             #     nn.ReLU(),
-    #             #     nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=0),
-    #             #     nn.ReLU(),
-    #             #     nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
-    #             #     nn.ReLU(),
-    #             #     nn.Flatten(),
-    #             # )
-    #             extractors[key] = nn.Sequential(
-    #                 nn.Conv2d(n_input_channels, 32, kernel_size=5, stride=2, padding=0),
-    #                 nn.ReLU(),
-    #                 nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=0),
-    #                 nn.ReLU(),
-    #                 nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
-    #                 nn.ReLU(),
-    #                 nn.Flatten(),
-    #             )
-
-
-    #             # n_input_channels = subspace.shape[0]
-    #             # extractors[key] = nn.Sequential(
-    #             # nn.Conv2d(n_input_channels, 32, kernel_size=3, padding=1),
-    #             # nn.ReLU(),
-    #             # nn.ReLU(),
-    #             # nn.MaxPool2d(kernel_size=2, stride=2, padding=1),  # Adjusted parameters
-    #             # nn.Conv2d(32, 64, kernel_size=3, padding=1),
-    #             # nn.ReLU(),
-    #             # nn.MaxPool2d(kernel_size=2, stride=2, padding=1),  # Adjusted parameters
-    #             # nn.Conv2d(64, 128, kernel_size=3, padding=1),
-    #             # nn.ReLU(),
-    #             # nn.MaxPool2d(kernel_size=2, stride=2, padding=1),  # Adjusted parameters
-    #             # nn.Flatten(),
-    #             # )
-
-    #             # Compute shape by doing one forward pass
-    #             with th.no_grad():
-    #                 ex_shape = extractors[key](th.as_tensor(observation_space.sample()[key]).float())
-                    
-    #             linear = nn.Sequential(nn.Linear(ex_shape.shape[0] * ex_shape.shape[1], 512, nn.ReLU()))  #512 is img features dim
-    #             extractors[key] = nn.Sequential(extractors[key], linear)
-    #             total_concat_size += 512
-
-    #         elif key == "velocity":
-    #             extractors[key] = nn.Sequential(
-    #                 nn.Linear(subspace.shape[0], 16),
-    #                 nn.ReLU()
-    #             )
-    #             total_concat_size += 16
-            
-    #         elif key == "relative_distance":
-    #             extractors[key] = nn.Sequential(
-    #                 nn.Linear(subspace.shape[0], 16),
-    #                 nn.ReLU()
-    #             )
-    #             total_concat_size += 16
-            
-    #         elif key == "prev_relative_distance":
-    #             extractors[key] = nn.Sequential(
-    #                 nn.Linear(subspace.shape[0], 16),
-    #                 nn.ReLU()
-    #             )
-    #             total_concat_size += 16
-
-    #         elif key == "action_history":
-    #             extractors[key] = nn.Sequential(
-    #                 nn.Linear(subspace.shape[0], 16),
-    #                 nn.ReLU()
-    #             )
-    #             total_concat_size += 16
-            
-    #         elif key == "altimeter":
-    #             extractors[key] = nn.Sequential(
-    #                 nn.Linear(subspace.shape[0], 16),
-    #                 nn.ReLU()
-    #             )
-    #             total_concat_size += 16
-    #     self.extractors = nn.ModuleDict(extractors)
-
-    #     # Update the features dim manually
-    #     self._features_dim = total_concat_size
-    
-    # def forward(self, observations) -> th.Tensor:
-    #     encoded_tensor_list = []
-
-    #     for key, extractor in self.extractors.items():
-    #         # if key in ["image"]:
-    #         #     observations[key] = observations[key].permute((0, 3, 1, 2))
-
-    #         encoded_tensor_list.append(extractor(observations[key]))
-
-    #     return th.cat(encoded_tensor_list, dim=1)
-
 policy_kwargs = dict(
             features_extractor_class=CustomCombinedExtractor,
         )
@@ -217,21 +104,22 @@ env = VecTransposeImage(env)
 model = DQN(
     "MultiInputPolicy",
     env,
-    learning_rate=0.0005, #0.00025
+    learning_rate=0.0001, #0.00025
     # learning_rate=linear_schedule(1.0),
     verbose=1,
     # batch_size=64, #128  #32
     batch_size=128,
-    train_freq=4, #4
+    train_freq=4,
     # target_update_interval=5_000, #5_000
     target_update_interval=5_000,
-    learning_starts=1000 , #3_000, #5_000
+    learning_starts=4000 , 
     policy_kwargs=policy_kwargs,
-    buffer_size=60_000, #500_000
+    buffer_size=90_000, 
     # buffer_size=70_000,
     max_grad_norm=10,
-    exploration_fraction=0.6, #0.1
-    exploration_final_eps=0.01,
+    # exploration_fraction=0.8, #0.1
+    exploration_fraction=0.8,
+    exploration_final_eps=0.05,
     device="cuda",
     tensorboard_log=logdir
 )
@@ -248,7 +136,7 @@ checkpoint_callback = CheckpointCallback(
 )
 
 stop_train_callback = StopTrainingOnNoModelImprovement(
-    max_no_improvement_evals=10, 
+    max_no_improvement_evals=20, 
     min_evals=80, 
     verbose=1
 )

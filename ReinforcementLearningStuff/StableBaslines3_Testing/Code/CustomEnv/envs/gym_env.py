@@ -47,6 +47,9 @@ class drone_env(gymnasium.Env):
         self.start_time = 0
         self.timestep_count = 0
 
+        # counter for idle movements
+        self.no_movement = 0
+
         # these are 6 pre-determined locations to be used for placing the target randomly
         self.target_locations = np.array([[-132.19700622558594, -53.86787796020508, 22.765165328979492],
                             [68.42804718017578, -99.58522033691406, 1.0497558116912842],
@@ -121,10 +124,10 @@ class drone_env(gymnasium.Env):
     def setGoals(self):
         distance, _ = self.get_distance()
         self.original_distance = distance
-        sub_distance = distance / 4
+        sub_distance = distance / 6
         print("Distance " + str(distance))
         print("Sub distance " + str(sub_distance))
-        for _ in range(3):
+        for _ in range(5):
             distance -= sub_distance
             self.goals.append(distance)
         self.goals.append(-99)
@@ -145,7 +148,7 @@ class drone_env(gymnasium.Env):
 
     #     return
     
-    '''modified doAction'''
+    # modified doAction which takes into acount the rotation
     def doAction(self, action):
         quad_offset, rotate = self.getActionChange(action)
         # self.drone.startRecording()
@@ -213,7 +216,6 @@ class drone_env(gymnasium.Env):
         r_z = np.linalg.norm(self.info["position"][2]-self.goal_position[2])
 
         rel_dist = np.array([r_x,r_y,r_z], dtype=np.float64)
-        # print(rel_dist)
         return rel_dist
     
     #Punishes the drone for going farther than the original distance from the drone
@@ -228,75 +230,70 @@ class drone_env(gymnasium.Env):
         reward = 0
 
         curr_distance, previous_distance = self.get_distance()
-        # reward += (previous_distance - curr_distance) - np.linalg.norm(self.info["prev_position"]-self.info["position"])
-        reward += (previous_distance - curr_distance) * 10
+        reward += (previous_distance - curr_distance) - np.linalg.norm(self.info["prev_position"]-self.info["position"])
+        # reward += (previous_distance - curr_distance) * 10
         print("original distance from Goal: " + str(self.original_distance))
         print("current distance from Goal: " + str(curr_distance))
         
         if curr_distance <= self.goals[self.sub_goal]:
             print("Level: "+str(self.sub_goal))
             self.sub_goal += 1 
-            reward += 100
+            reward += 20
         
         #Dont stay still too long
         # if chosenAction == 8: 
         #     reward += -0.5
         
         # if the drone does nothing and is in the same position give them minus 10 (or if the change in distance is very small)
+        # this takes into account both idle action and sometimes drone also just rotates in place for the whole episode
         tolerance = 0.001
         if abs(previous_distance - curr_distance) <= tolerance:
             reward -= 1
+            self.no_movement += 1
+            print(f"current number of idle movements: {self.no_movement}")
 
         # if the prev_dist is less then curr_dist, then we got further from the target
         # and give them a slight penalty to show they are going in the wrong direction
         if previous_distance < curr_distance:
-            # check if drone has been doing the same consecutive actions and there's no improvement on getting closer to the target
-            # returns true if all element in array are equal
-            # 3/17/2024 modify this
-            if (len(np.unique(self.state["action_history"])) == 1):
-                print(self.state["action_history"])
-                print("System: Drone has been doing the same action but is not getting closer to the target")
-                reward += -100
-                done = True
-            elif curr_distance > self.original_distance:
+            if curr_distance > self.original_distance:
+                print(f"{curr_distance} is greater than {self.original_distance}")
                 reward -= self.radius_loss_eq(curr_distance)
             else: 
-                reward -= 10
+                reward -= 0.5
 
         # check drone altimeter to make sure it's not too close or too high up the environment
         altimeter = self.state["altimeter"][0]
         if 5.0 <= altimeter <= 20.0:
             print(f"{altimeter} is within the range.")
-            reward += 3
+            reward += 1
         else:
             print(f"{altimeter} is out the range.")
-            reward -= 3
+            reward -= 0.5
 
         # if self.state["relative_distance"][0] < 7 and self.state["relative_distance"][1] < 7 and self.state["relative_distance"][1] < 7:
         # if -2 <= self.state["relative_distance"][0] <= 2 and -2 <= self.state["relative_distance"][1] <= 2:
         if curr_distance < 8.0:
         # if self.state["relative_distance"][0] < 2:
-            reward += 200
+            reward += 100
             self.info["goalreached"] = True
             print("System: Goal Reached.")
             done = True
         # check if drone has been doing no action for the past 10 actions (Action history)
-        elif np.all(self.state["action_history"] == 8):
-            print(self.state["action_history"])
-            print("System: Drone has been idle for too long.")
-            reward += -100
+        elif self.no_movement == 10:
+            print(f"System: Drone had not moved after {self.no_movement} actions")
+            reward -= 100
             done = True
         elif self.info["collision"]:
             print("System: Drone collision.")
-            reward += -100
+            reward -= 100
             done = True
-        elif curr_distance >= 300:
+        elif curr_distance >= 200:
             print("System: Drone is TOO far from target.")
-            reward += -100
+            reward -= 100
             done = True
         elif self.timestep_count > self.max_timestep:
             print("System: Time Step Limit Reached.")
-            reward += -100
+            reward -= 100
             done = True
 
         print("Final reward: "+str(reward))
@@ -341,6 +338,9 @@ class drone_env(gymnasium.Env):
         self.drone.simPause(False)
         self.startFlight()
         self.drone.simPause(True)
+
+        # reset counter for idle movements
+        self.no_movement = 0
 
         # return self.getObservation(chosenAction=-1), self.info
         return self.getObservation(chosenAction=-1)
@@ -413,7 +413,7 @@ class drone_env(gymnasium.Env):
 
     def getObservation(self, chosenAction):
 
-        self.drone.simPause(True)
+        # self.drone.simPause(True)
         image = self.getImageObs()
         
         self.info["prev_image"] = self.state["image"] 
