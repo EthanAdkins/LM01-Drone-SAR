@@ -72,6 +72,7 @@ YOLO_CONFIDENCE = configDrones.YOLO_CONFIDENCE
 MAX_COLLISION_TIME =configDrones.MAX_COLLISION_TIME
 MIN_COLLISION_TIME = configDrones.MIN_COLLISION_TIME
 GRID_SIZE = configDrones.GRID_SIZE
+SIGNIFICANCE_THRESHOLD = configDrones.SIGNIFICANCE_THRESHOLD
 # ros: topics
 SLAM_MERGE_TOPIC = ros.SLAM_MERGE_TOPIC # TODO
 WOLF_DATA_TOPIC = ros.WOLF_DATA_TOPIC
@@ -237,7 +238,7 @@ def wolfDroneController(droneName, droneCount, overseerCount):
     # Wolf Drone search loop Start
     i = 1
     timeSpent = 0;
-    max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=-1)  
+    max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)  
     probableLocation = max_prob_index
     
     if ((max_prob_index != None)):
@@ -290,11 +291,11 @@ def wolfDroneController(droneName, droneCount, overseerCount):
             
         doCollision, closestObjectDistance, closestTree,closestTreeName= collisionDetectionBehavior.collisionAvoidanceCheck(client, droneName, threshold)
 
-        max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=-1)  
+        max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)  
         probableLocation = max_prob_index
 
 
-        # max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=-1)  
+        # max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)  
         # probableLocation = max_prob_index
         # if ((max_prob_index != None) and (initialProbSearchNum != probSearchNum)):
         #     BayesGPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
@@ -426,7 +427,8 @@ def wolfDroneController(droneName, droneCount, overseerCount):
 
         elif (Line_Behavior): # Line_Behavior
             # Gets drones waypoint and vector movement
-            BayesGPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
+            if (max_prob_index != None):
+                BayesGPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
 
             # waypoint = WAYPOINT_COORDS[WAYPOINT_INDEX]
             # bayes_gps_reversed = [BayesGPS[1], BayesGPS[0]]
@@ -697,7 +699,7 @@ def handleGridUpdate(data):
     global bayes_grid
     gridString = data.data
     BayesGrid.load_from_string(gridString)
-    max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=-1)  
+    max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)  
     
     if ((max_prob_index != None) and max_prob_index != probableLocation):
                 probableLocation = max_prob_index
@@ -1109,9 +1111,10 @@ def updateConsensusDecisionCenter(circleCenterGPS, currIterationNum, result, ori
         searchnum += 1
         searchIDUpdate(searchnum, Task_Group)
         searchGPSIndex = bayes_grid.gps_to_grid(originalSearchGPS.latitude, originalSearchGPS.longitude)
-        if (searchGPSIndex[0] == probLocation[0] and searchGPSIndex[1] == probLocation[1]):
-            probSearchNum += 1
-            print("Prob Search num++: ", probSearchNum)
+        if (probLocation):
+            if (searchGPSIndex[0] == probLocation[0] and searchGPSIndex[1] == probLocation[1]):
+                probSearchNum += 1
+                print("Prob Search num++: ", probSearchNum)
         # debugPrint("NOT TARGET 2")
         # print("GPS TEST:",originalSearchGPS)
         global Consensus_Decision_Behavior;

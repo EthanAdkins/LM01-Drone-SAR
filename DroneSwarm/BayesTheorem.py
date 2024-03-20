@@ -69,7 +69,7 @@ class BayesGrid:
             #print(f"Most Probable Location: {max_prob_index}, Probability: {highest_prob}")
             return max_prob_index, highest_prob
         else:
-            print("No significantly most probable location found.")
+            # print("No significantly most probable location found.")
             return None, None
 
     def apply_evidence_to_cell(self, GPSCoord, searchID):

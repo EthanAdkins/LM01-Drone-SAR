@@ -63,7 +63,7 @@ DISTANCE_LEAD_OVERSEER_GPS = configDrones.DISTANCE_LEAD_OVERSEER_GPS
 MIN_CIRCLE_PADDING_FOR_SEARCH_HISTORY = configDrones.MIN_CIRCLE_PADDING_FOR_SEARCH_HISTORY
 MAX_WAYPOINT_SAVE_TIME = configDrones.MAX_WAYPOINT_SAVE_TIME
 GRID_SIZE = configDrones.GRID_SIZE
-
+SIGNIFICANCE_THRESHOLD = configDrones.SIGNIFICANCE_THRESHOLD
 # ros: topics
 OVERSEER_DATA_TOPIC = ros.OVERSEER_DATA_TOPIC
 OVERSEER_COMMUNICATION_TOPIC = ros.OVERSEER_COMMUNICATION_TOPIC
@@ -182,7 +182,7 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
     debugPrint("Starting Search and Rescue loop")
     timeSpent = 0
     runtime = time.time() # USED FOR TESTING
-    max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=-1)
+    max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)
     probableLocation = max_prob_index
     if (max_prob_index != None):
         # There is a significant probable location
@@ -326,7 +326,7 @@ def handleRequestGridUpdate(data):
     if(result):
         print("WolfUpdated: ", bayes_grid.Grid)
         # Update Grid Here
-        max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=-1)
+        max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)
         if ((max_prob_index != None) and max_prob_index != probableLocation):
             probableLocation = max_prob_index
             # There is a significant probable location
@@ -360,7 +360,7 @@ def handleWolfCommunication(data):
         # debugPrint(text)
         if(WAYPOINT_INDEX < spiralIndex):
             # text = "Current index out of data, setting to recieved waypoint: " + str(spiralIndex)
-            # max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=-1)
+            # max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)
             # GPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
             # if (max_prob_index != None and not (WAYPOINT_COORDS[WAYPOINT_INDEX][0] == GPS[1] and WAYPOINT_COORDS[WAYPOINT_INDEX][1] == GPS[0])):
             #     # There is a significant probable location
