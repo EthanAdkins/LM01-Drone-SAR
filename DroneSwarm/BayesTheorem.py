@@ -10,7 +10,8 @@ BOTTOM_LEFT_BOUND = configDrones.BOTTOM_LEFT_BOUND
 TOP_RIGHT_BOUND = configDrones.TOP_RIGHT_BOUND
 grid_index_width = configDrones.grid_index_width
 grid_index_height = configDrones.grid_index_height
-
+THRESHOLD_LAT = configDrones.THRESHOLD_LAT  # Example threshold for latitude
+THRESHOLD_LON = configDrones.THRESHOLD_LON  # Example threshold for longitude
 
 class BayesGrid:
     Grid = None
@@ -107,19 +108,24 @@ class BayesGrid:
 
     def gps_to_grid(self, latitude, longitude):
         """ Convert the GPS coordinate to the appropriate location in the Bayes grid"""
-        print(((grid_index_width)))
+        # print(((grid_index_width)))
 
-        xIndex = math.floor(((longitude - BOTTOM_LEFT_BOUND[1]) / grid_index_width))       # cell = (row, column) so this may seem reversed 
-        yIndex = math.floor(((latitude - BOTTOM_LEFT_BOUND[0]) / grid_index_height))   
+        latitude = max(BOTTOM_LEFT_BOUND[0], min(TOP_RIGHT_BOUND[0], latitude))
+        longitude = max(BOTTOM_LEFT_BOUND[1], min(TOP_RIGHT_BOUND[1], longitude))
+
+        xIndex = math.floor((longitude - BOTTOM_LEFT_BOUND[1]) / grid_index_width)
+        yIndex = math.floor((latitude - BOTTOM_LEFT_BOUND[0]) / grid_index_height)
         return (yIndex, xIndex)
     
     def is_in_bounds(self, latitude, longitude):
-        """ Check if the GPS coordinate is within the defined bounds. """
-        if (BOTTOM_LEFT_BOUND[0] <= latitude <= TOP_RIGHT_BOUND[0]) and \
-        (BOTTOM_LEFT_BOUND[1] <= longitude <= TOP_RIGHT_BOUND[1]):
-            return True
-        else:
-            return False
+        """Check if the GPS coordinate is within the defined bounds or slightly outside within a threshold."""
+        # Check latitude within bounds considering the threshold
+        in_lat_bounds = (BOTTOM_LEFT_BOUND[0] - THRESHOLD_LAT <= latitude <= TOP_RIGHT_BOUND[0] + THRESHOLD_LAT)
+        
+        # Check longitude within bounds considering the threshold
+        in_lon_bounds = (BOTTOM_LEFT_BOUND[1] - THRESHOLD_LON <= longitude <= TOP_RIGHT_BOUND[1] + THRESHOLD_LON)
+        
+        return in_lat_bounds and in_lon_bounds
         
     def centerGrid_to_GPS(self, Index):
         """ Convert an index of the Bayes grid to the GPS center of that grid index"""
