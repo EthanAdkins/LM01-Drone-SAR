@@ -104,7 +104,7 @@ env = VecTransposeImage(env)
 model = DQN(
     "MultiInputPolicy",
     env,
-    learning_rate=0.0001, #0.00025
+    learning_rate=0.001, #0.00025
     # learning_rate=linear_schedule(1.0),
     verbose=1,
     # batch_size=64, #128  #32
@@ -118,7 +118,7 @@ model = DQN(
     # buffer_size=70_000,
     max_grad_norm=10,
     # exploration_fraction=0.8, #0.1
-    exploration_fraction=0.8,
+    exploration_fraction=0.9,
     exploration_final_eps=0.05,
     device="cuda",
     tensorboard_log=logdir

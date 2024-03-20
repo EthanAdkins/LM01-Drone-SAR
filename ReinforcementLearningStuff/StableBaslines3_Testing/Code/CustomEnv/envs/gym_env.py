@@ -401,13 +401,24 @@ class drone_env(gymnasium.Env):
         depth_img_in_meters = airsim.list_to_2d_float_array(request[0].image_data_float, request[0].width, request[0].height)
         depth_img_in_meters = depth_img_in_meters.reshape(request[0].height, request[0].width, 1)
         depth_8bit_lerped = np.interp(depth_img_in_meters, (0, 100), (0, 255))
+        if depth_8bit_lerped.size != (150*150*1):
+            print("Returned bad depth image data, creating dummy array to prevent training from stopping")
+            depth_test = np.zeros(150*150)
+            depth_8bit_lerped = np.reshape(depth_test,(150, 150, 1))
 
         # get rgb image
         rgb = np.frombuffer(request[1].image_data_uint8, dtype=np.uint8)
         rgb_2d = np.reshape(rgb, (request[1].height, request[1].width, 3))
-
+        if rgb_2d.size != (150*150*3):
+            print("Returned bad rgb image data, creating dummy array to prevent training from stopping")
+            rgb_test = np.ones(150*150*3)
+            rgb_2d = np.reshape(rgb_test,(150, 150,3))
+        
         # get rgb-d image
         rgb_d = np.concatenate((rgb_2d, depth_8bit_lerped), axis=-1)
+
+        # sanity check
+        # airsim.write_png(os.path.normpath(f'{my_path}/imageStacked.png'), rgb_d)
         return rgb_d
 
 

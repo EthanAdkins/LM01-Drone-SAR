@@ -86,18 +86,38 @@ for _ in range(5):
 
     response_depth = image_request[0]
     depth_img_in_meters = airsim.list_to_2d_float_array(response_depth.image_data_float, response_depth.width, response_depth.height)
+    # check if size is good
+    # print(depth_img_in_meters.size)
     depth_img_in_meters = depth_img_in_meters.reshape(response_depth.height, response_depth.width, 1)
     depth_8bit_lerped = np.interp(depth_img_in_meters, (0, 100), (0, 255))
+    print(depth_8bit_lerped.size)
     airsim.write_png(os.path.normpath(f'{my_path}/imageChangedDepth{num}.png'), depth_8bit_lerped)
     
     # ---------------------------------RGB Capture Picture-----------------------------------------------------
     response_rgb = image_request[1]
     rgb = np.frombuffer(response_rgb.image_data_uint8, dtype=np.uint8)
+    # check if size is good
+    print(len(rgb))
+    if (len(rgb)) != (150*150*3):
+        print("incorrect image")
     rgb_2d = np.reshape(rgb, (response_rgb.height, response_rgb.width, 3))
+    print(rgb_2d.size)
+
     airsim.write_png(os.path.normpath(f'{my_path}/imageChangedRGB{num}.png'), rgb_2d)
     rgb_d = np.concatenate((rgb_2d, depth_8bit_lerped), axis=-1)
-    print(rgb_d.shape)
+    # print(rgb_d.shape)
     airsim.write_png(os.path.normpath(f'{my_path}/imageStacked{num}.png'), rgb_d)
+
+    rgb_test = np.ones(150*150*3)
+    rgb_test_2d = np.reshape(rgb_test,(150, 150,3))
+    airsim.write_png(os.path.normpath(f'{my_path}/rgbTestdummy{num}.png'), rgb_test_2d)
+
+    depth_test = np.zeros(150*150)
+    depth_test_2d = np.reshape(depth_test,(150, 150, 1))
+    airsim.write_png(os.path.normpath(f'{my_path}/depthTestdummy{num}.png'), depth_test_2d)
+
+    rgb_d_dummy = np.concatenate((rgb_test_2d, depth_test_2d), axis=-1)
+    airsim.write_png(os.path.normpath(f'{my_path}/rgbddummy{num}.png'), rgb_d_dummy)
     # --------------------------------------------------------------------------------------
     # collision = drone.simGetCollisionInfo().has_collided
     # # print(collision)
