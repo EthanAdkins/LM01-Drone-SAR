@@ -5,3 +5,4 @@ float64 circleRadiusMeters
 float64 spreadTimeS
 float64 searchTimeS
 string taskGroup
+bool forceConsensus

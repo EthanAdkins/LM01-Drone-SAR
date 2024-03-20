@@ -79,10 +79,11 @@ class BayesGrid:
         # Check if searchID has been seen before
         if searchID in self.seen_search_ids:
             print(f"Search ID {searchID} has been seen before.")
-            return False
+            return False, None
         
         # If searchID is new, add it to the set
         self.seen_search_ids.add(searchID)
+        print("Added: ", searchID," to seen Search IDs")
 
         # cell = (row, column)
         if(self.is_in_bounds(GPSCoord[0], GPSCoord[1])):
@@ -92,10 +93,11 @@ class BayesGrid:
             likelihood[cell] = EVIDENCE
             self.update_grid_with_evidence(likelihood)
             #BayesGrid.save_to_file()
-            return True
+            gridString = self.save_to_string()
+            return True, gridString
         else:
             print("GPS Coordinate: ", GPSCoord, " Out of Bounds")
-            return False
+            return False, None
 
     def update_grid_with_evidence(self, evidence_grid):
         """ Update the grid probabilities based on new evidence using Bayes' Theorem. """
@@ -156,6 +158,26 @@ class BayesGrid:
     #             BayesGrid.Grid = np.array(grid_list)
     #     except FileNotFoundError:
     #         print(f"File {filename} not found in {constants_dir}.")
+    def save_to_string(self):
+        if BayesGrid.Grid is not None:
+            # Convert numpy array to a list and serialize to JSON string
+            json_string = json.dumps(BayesGrid.Grid.tolist())
+            return json_string
+        else:
+            print("Grid is not initialized.")
+            return None
+        
+    @staticmethod
+    def load_from_string(json_string):
+        # Deserialize JSON string back to a list
+        grid_list = json.loads(json_string)
+        
+        # Convert list back to a numpy array and assign it to BayesGrid.Grid
+        BayesGrid.Grid = np.array(grid_list)
+
+        print("Loaded Grid")
+
+
 
 
 if __name__ == '__main__':

@@ -63,6 +63,7 @@ add_message_files(
   wolfCommunication.msg
   updateMap.msg
   requestGridUpdate.msg
+  handleSearchIDUpdate.msg
 )
 
 add_service_files(

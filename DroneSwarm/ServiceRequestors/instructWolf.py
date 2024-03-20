@@ -45,7 +45,7 @@ def sendLinebehaviorRequest(serviceName, clusterName):
     print("Message status: ", resp, " wolf: ", serviceName)
     return response
 
-def sendWolfSearchBehaviorRequest(serviceName, circleCenterGPS, circleRadiusGPS, circleRadiusMeters, spreadTimeS, searchTimeS,  taskGroup):
+def sendWolfSearchBehaviorRequest(serviceName, circleCenterGPS, circleRadiusGPS, circleRadiusMeters, spreadTimeS, searchTimeS,  taskGroup, forceConsensus=False):
     # Create messages needed with parameters
     messageType = "RequestWolfSearch"
     wolfSearchBehaviorMsg = requestWolfSearchBehavior()
@@ -61,7 +61,7 @@ def sendWolfSearchBehaviorRequest(serviceName, circleCenterGPS, circleRadiusGPS,
     wolfSearchBehaviorMsg.spreadTimeS = spreadTimeS
     wolfSearchBehaviorMsg.searchTimeS = searchTimeS
     wolfSearchBehaviorMsg.taskGroup = taskGroup
-
+    wolfSearchBehaviorMsg.forceConsensus = forceConsensus
     # Add empty data for unused message
     linebehaviorMsg = requestLineBehavior()
     consensusDecisionBehaviorMsg = requestConsensusDecisionBehavior()
