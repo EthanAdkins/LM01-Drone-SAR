@@ -101,6 +101,8 @@ global max_prob_value
 probSearchNum = 0
 initialProbSearchNum = -1
 global overseerGridUpdatePublish
+global probableLocation
+
 # Main Process Start ----------------------------------------------
 # Main function for the overseer drone
 def overseerDroneController(droneName, overseerCount, wolfCount):
@@ -111,8 +113,10 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
     global initialProbSearchNum
     global max_prob_index
     global max_prob_value
+    global probableLocation
     DM_Drone_Name = droneName
     Cluster = droneName
+    probableLocation = None
     # use this code to make print calls allowing you to know what process made the print statemnt
     debugPrint("Process started")
     droneNum = ''.join(filter(lambda i: i.isdigit(), droneName)) # Get overseer number from droneName
@@ -179,6 +183,7 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
     timeSpent = 0
     runtime = time.time() # USED FOR TESTING
     max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=-1)
+    probableLocation = max_prob_index
     if (max_prob_index != None):
         # There is a significant probable location
         GPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
@@ -312,6 +317,7 @@ def handleRequestGridUpdate(data):
     global overseerGridUpdatePublish
     global max_prob_index
     global max_prob_value
+    global probableLocation
     searchOperationID = data.searchOperationID
     longitude = data.longitude
     latitude = data.latitude
@@ -321,7 +327,8 @@ def handleRequestGridUpdate(data):
         print("WolfUpdated: ", bayes_grid.Grid)
         # Update Grid Here
         max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=-1)
-        if (max_prob_index != None):
+        if ((max_prob_index != None) and max_prob_index != probableLocation):
+            probableLocation = max_prob_index
             # There is a significant probable location
             GPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
             WAYPOINT_COORDS.insert(WAYPOINT_INDEX,[GPS[1], GPS[0]])
@@ -344,6 +351,7 @@ def handleWolfCommunication(data):
     global WAYPOINT_INDEX
     global max_prob_index
     global max_prob_value
+    global probableLocation
     #debugPrint("overseer listend to wolf comm")
     # Check if we got at spiral waypoint signal
     if ((command == AT_SPIRAL_WAYPOINT_SIGNAL) and (cluster == DM_Drone_Name)):
@@ -610,6 +618,7 @@ def allDronesAtWaypoint(overseerName):
     global WAYPOINT_INDEX
     global max_prob_index
     global max_prob_value
+    global probableLocation
     wolfClusterInfo = overseerGetWolfData.getWolfDataOfCluster(overseerName)
     droneNum = 0
     if (not wolfClusterInfo):

@@ -698,9 +698,9 @@ def handleGridUpdate(data):
     gridString = data.data
     BayesGrid.load_from_string(gridString)
     max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=-1)  
-    probableLocation = max_prob_index
     
-    if ((max_prob_index != None)):
+    if ((max_prob_index != None) and max_prob_index != probableLocation):
+                probableLocation = max_prob_index
                 BayesGPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
                 WAYPOINT_COORDS.insert(WAYPOINT_INDEX,[BayesGPS[1], BayesGPS[0]])
                 initialProbSearchNum = probSearchNum
