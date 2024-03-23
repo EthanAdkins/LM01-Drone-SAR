@@ -624,6 +624,9 @@ def allDronesAtWaypoint(overseerName):
     if (not wolfClusterInfo):
         # The cluster is empty
         return 0
+    if (len(wolfClusterInfo) < 4):
+        # print("Not all drones")
+        return 0
     for drone in wolfClusterInfo:
         xDifference = drone.longitude - float(WAYPOINT_COORDS[WAYPOINT_INDEX][0])
         yDifference = drone.latitude - float(WAYPOINT_COORDS[WAYPOINT_INDEX][1])
@@ -632,6 +635,9 @@ def allDronesAtWaypoint(overseerName):
         if ((abs(xDifference) > 0.0003) or (abs(yDifference) > 0.0003)):
             #print(droneNum, "X difference:", xDifference, "Y Difference:", yDifference)
             #print("Drones still heading to waypoint: ", WAYPOINT_COORDS[WAYPOINT_INDEX])
+            return 0
+        if(drone.taskGroup != ''):
+            #print("DRONE IS SEARCHING NOT AT WAYPOINT")
             return 0
         droneNum += 1
 

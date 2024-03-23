@@ -20,7 +20,7 @@ class BayesGrid:
         self.seen_search_ids = set()
         if BayesGrid.Grid is None:
             print("Initializing Grid")
-            BayesGrid.Grid = self.initializeGrid(size)
+            BayesGrid.Grid = self.initialize_grid_prior(size)
             #BayesGrid.save_to_file()
 
     def initializeGrid(self, size):
@@ -44,6 +44,12 @@ class BayesGrid:
         # Normalize the grid so probabilities sum to 1
         grid /= grid.sum()
         return grid
+    
+    def initialize_grid_prior(self, size):
+        """ Initialize a probability grid with clustered high probability areas. """
+        BayesGrid.Grid = self.initializeGrid(size)
+        self.increase_probability_by_gps([0.000021918283978328166,0])
+        return BayesGrid.Grid
 
     def find_max_probability_cell(self, significance_threshold=-1):
         """
@@ -182,6 +188,45 @@ class BayesGrid:
         BayesGrid.Grid = np.array(grid_list)
 
         print("Loaded Grid")
+
+    def increase_probability_by_gps(self, GPSCoord, factor=1.5, neighbor_factor=1.01):
+        """
+        Increases the probability of a specific cell determined by GPS coordinates
+        and slightly increases the probability of the neighboring cells.
+
+        Parameters:
+        - GPSCoord: Tuple containing the latitude and longitude of the evidence.
+        - factor: The factor by which to increase the probability in the specified cell.
+        - neighbor_factor: The factor by which to increase the probabilities of the neighboring cells.
+        """
+        if not self.is_in_bounds(GPSCoord[0], GPSCoord[1]):
+            print("GPS Coordinate: ", GPSCoord, " Out of Bounds")
+            return False, None
+
+        cell = self.gps_to_grid(GPSCoord[0], GPSCoord[1])
+        print("Increasing probability for Cell (y,x):", cell)
+
+        # Apply the factor to the target cell
+        BayesGrid.Grid[cell] *= factor
+
+        # Get the size of the grid to prevent index out of bounds
+        max_y, max_x = BayesGrid.Grid.shape
+
+        # Define the range of neighboring cells to adjust
+        neighbors = [(i, j) for i in range(-1, 2) for j in range(-1, 2) if not (i == 0 and j == 0)]
+        
+        # Adjust the probabilities for the neighboring cells
+        for dy, dx in neighbors:
+            new_y, new_x = cell[0] + dy, cell[1] + dx
+            if 0 <= new_y < max_y and 0 <= new_x < max_x:  # Check if within bounds
+                BayesGrid.Grid[new_y, new_x] *= neighbor_factor
+
+        # Ensure the probabilities sum to 1 after modification
+        BayesGrid.Grid /= BayesGrid.Grid.sum()
+
+        print("Probability increased for cell and neighbors:", cell)
+        gridString = self.save_to_string()
+        return True, gridString
 
 
 

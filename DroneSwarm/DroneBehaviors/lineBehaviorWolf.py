@@ -293,7 +293,10 @@ def allDronesAtWaypoint(wolfCommPublish, client, WAYPOINT_INDEX, Cluster, WAYPOI
             # If any of the drones are out of bounds, return false
             if ((abs(xDifference) > 0.0004) or (abs(yDifference) > 0.0004)):
                 return False, WAYPOINT_INDEX
-
+            # I added this, may wanna experiment. It prevents the drones from moving when a drone is doing a scan at a location. Most important for the Bayes Theorem part (most prob point)
+            # if(wolf.taskGroup != ''):
+            #     print("DRONE IS SEARCHING, NOT AT WAYPOINT (LineBehavior)")
+            #     return False, WAYPOINT_INDEX
         # Check if our global value has changed
         if (waypointIndexBeforeCheck == WAYPOINT_INDEX):    
             WAYPOINT_INDEX = WAYPOINT_INDEX + 1
