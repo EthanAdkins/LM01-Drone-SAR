@@ -16,6 +16,8 @@ from math import sqrt
 from ImageProcessing import getInfo
 from ImageProcessing import yolov5
 import torch
+from BayesTheorem import BayesGrid 
+import Overseer
 # import constants
 import Constants.configDrones as configDrones
 import Constants.ros as ros
@@ -37,6 +39,9 @@ from airsim_ros_pkgs.msg import updateMap
 from airsim_ros_pkgs.srv import getDroneData
 from airsim_ros_pkgs.srv import sendCommand
 from airsim_ros_pkgs.msg import GPS
+from airsim_ros_pkgs.msg import requestGridUpdate
+from airsim_ros_pkgs.msg import handleSearchIDUpdate
+
 # import helper function
 import HelperFunctions.calcHelper as calcHelper
 import HelperFunctions.pathWaypoints as pathWaypoints
@@ -45,6 +50,7 @@ import HelperFunctions.airSimHelper as airSimHelper
 import ServiceRequestors.wolfGetWolfData as wolfGetWolfData
 import ServiceRequestors.instructWolf as instructWolf
 import ServiceRequestors.checkGPU as checkGPU
+
 # import rosHelper
 import RosPublishHelper.MapHandlerPublishHelper as mapHandlerPublishHelper
 
@@ -65,6 +71,8 @@ CONSENSUS_ITERATION_LENGTH_SECONDS = configDrones.CONSENSUS_ITERATION_LENGTH_SEC
 YOLO_CONFIDENCE = configDrones.YOLO_CONFIDENCE
 MAX_COLLISION_TIME =configDrones.MAX_COLLISION_TIME
 MIN_COLLISION_TIME = configDrones.MIN_COLLISION_TIME
+GRID_SIZE = configDrones.GRID_SIZE
+SIGNIFICANCE_THRESHOLD = configDrones.SIGNIFICANCE_THRESHOLD
 # ros: topics
 SLAM_MERGE_TOPIC = ros.SLAM_MERGE_TOPIC # TODO
 WOLF_DATA_TOPIC = ros.WOLF_DATA_TOPIC
@@ -72,6 +80,8 @@ COMMAND_RESULT_TOPIC = ros.COMMAND_RESULT_TOPIC # TODO
 COMMAND_TOPIC = ros.COMMAND_TOPIC # TODO
 WOLF_COMMUNICATION_TOPIC = ros.WOLF_COMMUNICATION_TOPIC
 MAP_HANDLER_TOPIC = ros.MAP_HANDLER_TOPIC
+REQUEST_GRID_UPDATE = ros.REQUEST_GRID_UPDATE_TOPIC
+HANDLE_SEARCHID_UPDATE_TOPIC = ros.HANDLE_SEARCHID_UPDATE_TOPIC
 # ros: updateMapCommand types
 FINAL_TARGET_POSITION = ros.FINAL_TARGET_POSITION
 NEW_GPS_PREDICTION = ros.NEW_GPS_PREDICTION
@@ -133,6 +143,18 @@ Drone_Max_Wait_Time_Start = time.time()
 Consensus_Waypoint_History = []
 Final_Target = GPS()
 Final_Target_Found = False
+global searchnum
+global probSearchNum
+global initialProbSearchNum
+global bayes_grid
+global probableLocation
+
+curProbSearch = None
+searchnum = 0
+probSearchNum = 0
+initialProbSearchNum = -1
+bayes_grid = BayesGrid(GRID_SIZE)
+probableLocation = None
 # TODO: add tunning variables for behaviors (would be cool if we can train them)
 
 # TODO: COMMENT AND REVIEW
@@ -152,6 +174,10 @@ def wolfDroneController(droneName, droneCount, overseerCount):
         # Globals for consensus
     global In_Position_WS, In_Position_CD, Start_Time
     global Cur_Consensus_Iteration_Number, Circle_Center_GPS
+    global searchnum
+    global initialProbSearchNum
+    global bayes_grid
+    global probableLocation
     depthImageCount = 0
 
     # loading yolov5
@@ -194,7 +220,10 @@ def wolfDroneController(droneName, droneCount, overseerCount):
     # Create topic publishers
     wolfDataPublish = rospy.Publisher(WOLF_DATA_TOPIC, droneData, latch=True, queue_size=1)
     wolfCommPublish = rospy.Publisher(WOLF_COMMUNICATION_TOPIC, wolfCommunication, latch=True, queue_size=1)
-
+    global requestGridUpdatePublish
+    requestGridUpdatePublish = rospy.Publisher(REQUEST_GRID_UPDATE, requestGridUpdate, latch=True, queue_size=1)
+    global handleSearchIDUpdatePublish
+    handleSearchIDUpdatePublish = rospy.Publisher(HANDLE_SEARCHID_UPDATE_TOPIC, handleSearchIDUpdate, latch=True,queue_size=1)
     # Sets and connects to client and takes off drone
     client = takeOff(droneName)
     client.moveToZAsync(z=-5, velocity=8, vehicle_name = droneName).join()
@@ -208,8 +237,18 @@ def wolfDroneController(droneName, droneCount, overseerCount):
 
     # Wolf Drone search loop Start
     i = 1
-    debugPrint("Starting Search and Rescue loop")
     timeSpent = 0;
+    max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)  
+    probableLocation = max_prob_index
+    
+    if ((max_prob_index != None)):
+                BayesGPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
+                WAYPOINT_COORDS.insert(WAYPOINT_INDEX,[BayesGPS[1], BayesGPS[0]])
+                initialProbSearchNum = probSearchNum
+                debugPrint("Inserted Max Prob Waypoint Before Loop: ")
+                debugPrint(max_prob_index)
+                debugPrint(max_prob_value)
+    debugPrint("Starting Search and Rescue loop")
     runtime = time.time()
     while (i < LOOP_NUMBER):
         # If we receive end command, end the loop
@@ -251,6 +290,21 @@ def wolfDroneController(droneName, droneCount, overseerCount):
         #     threshold = 5
             
         doCollision, closestObjectDistance, closestTree,closestTreeName= collisionDetectionBehavior.collisionAvoidanceCheck(client, droneName, threshold)
+
+        max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)  
+        probableLocation = max_prob_index
+
+
+        # max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)  
+        # probableLocation = max_prob_index
+        # if ((max_prob_index != None) and (initialProbSearchNum != probSearchNum)):
+        #     BayesGPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
+        #     WAYPOINT_COORDS.insert(WAYPOINT_INDEX,[BayesGPS[1], BayesGPS[0]])
+        #     initialProbSearchNum = probSearchNum
+        #     debugPrint("Inserted Max Prob Waypoint: ")
+        #     debugPrint(max_prob_index)
+        #     debugPrint(max_prob_value)
+
         timeDiff = time.time() - Collision_Mode_Time
         if((doCollision) and (closestTreeName != tempTree)):
             # debugPrint("Doing collision")
@@ -317,7 +371,8 @@ def wolfDroneController(droneName, droneCount, overseerCount):
                                 # updateConsensusDecisionCenter may change taskGroup name
                                 # assign values locally
                                 if(Consensus_Decision_Behavior):
-                                    updateConsensusDecisionCenter(newGPSCenter, currIterationNum, result=passThreshold);
+                                    # newGPSCenter is 0?
+                                    updateConsensusDecisionCenter(newGPSCenter, currIterationNum, result=passThreshold, originalSearchGPS=gpsCenter);
                             else:
                                 debugPrint("alreadu updated consnsus")
                             
@@ -328,7 +383,7 @@ def wolfDroneController(droneName, droneCount, overseerCount):
                                     signalGPS=newGPSCenter, iterationNumber=currIterationNum, result=passThreshold)
                             
                             if(Consensus_Decision_Behavior):
-                                    updateConsensusDecisionCenter(newGPSCenter, currIterationNum, result=passThreshold);
+                                    updateConsensusDecisionCenter(newGPSCenter, currIterationNum, result=passThreshold, originalSearchGPS=gpsCenter);
             elif (not In_Position_CD):
                 wolfDataArray = wolfGetWolfData.getWolfDataOfTaskGroupExSelf(droneName, Task_Group)
 
@@ -361,10 +416,40 @@ def wolfDroneController(droneName, droneCount, overseerCount):
                 timeDiff = time.time() - Start_Time;
                 if (timeDiff > Search_Time):
                     debugPrint("end wolf search")
+                    wolfDataArray = wolfGetWolfData.getWolfDataOfTaskGroupExSelf(DM_Drone_Name, Task_Group);
+                    print("Wolf Search Searchnum++: ", searchnum)
+                    requestBayesGridUpdate(Circle_Center_GPS)
+                    searchnum += 1
+                    searchIDUpdate(searchnum, Task_Group)
+                    debugPrint(Task_Group)
+                    #debugPrint("NOT TARGET 3")
                     endWolfSearch();
 
         elif (Line_Behavior): # Line_Behavior
             # Gets drones waypoint and vector movement
+            if (max_prob_index != None):
+                BayesGPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
+
+            # waypoint = WAYPOINT_COORDS[WAYPOINT_INDEX]
+            # bayes_gps_reversed = [BayesGPS[1], BayesGPS[0]]
+            # lat_diff = abs(float(waypoint[0]) - bayes_gps_reversed[0])
+            # lon_diff = abs(float(waypoint[1]) - bayes_gps_reversed[1])
+            # if lat_diff < 0.0001 and lon_diff < 0.0001:
+            #     withinThresh = False
+            # else:
+            #     debugPrint("Within Threshold")
+            #     debugPrint(waypoint)
+            #     debugPrint(bayes_gps_reversed )
+            #     withinThresh = True
+
+            # max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=-1)  
+            # probableLocation = max_prob_index
+            # if ((max_prob_index != None) and (initialProbSearchNum != probSearchNum)):
+            #     WAYPOINT_COORDS.insert(WAYPOINT_INDEX,[BayesGPS[1], BayesGPS[0]])
+            #     initialProbSearchNum = probSearchNum
+            #     debugPrint("Inserted Max Prob Waypoint: ")
+            #     debugPrint(max_prob_index)
+            #     debugPrint(max_prob_value)
             newWaypoint = pathWaypoints.getNewWaypointWolf(droneName, WAYPOINT_INDEX, WAYPOINT_COORDS, Cluster)
             vector, curDroneAtWaypoint = lineBehaviorWolf.lineBehavior(client, int(droneName), newWaypoint)
             vectorTemp = 0
@@ -446,6 +531,8 @@ def wolfRosListeners(droneName):
     service = rospy.Service(serviceName, sendCommand, commandResponse)
     rospy.Subscriber(ros.END_LOOP_TOPIC, String, handleEnd)
     rospy.Subscriber(ros.WOLF_COMMUNICATION_TOPIC, wolfCommunication, handleWolfSignal)
+    rospy.Subscriber(ros.HANDLE_SEARCHID_UPDATE_TOPIC, handleSearchIDUpdate, SearchIDUpdateHandler)
+    rospy.Subscriber(ros.GRID_UPDATED_TOPIC, String, handleGridUpdate)
     rospy.spin()
 
 # checks drone camera with yolo detection
@@ -507,15 +594,15 @@ def wolfCameraDetection(droneName):
 
             if(not Consensus_Decision_Behavior):
                 # detection with no consensus behavior
-                isSearched = isAlreadySearched(formattedWolfEstimateGPS, MIN_CIRCLE_RADIUS_GPS)
-                if (not isSearched):
-                    # request nearby drones
-                    instructWolf.requestNearbyDronesConsensusDecision(circleCenterGPS=formattedWolfEstimateGPS, circleRadiusGPS=MIN_CIRCLE_RADIUS_GPS, \
-                        circleRadiusMeters=MIN_CIRCLE_RADIUS_METERS, searchTimeS=CONSENSUS_ITERATION_LENGTH_SECONDS, taskGroup=(droneName + "Con"), \
-                        clusterName=Cluster, dmDroneName=DM_Drone_Name, waypointIndex=WAYPOINT_INDEX, waypointCoords=WAYPOINT_COORDS )
-                    # current Drone switch to consenus
-                    startConsensusDecision( circleCenterGPS=formattedWolfEstimateGPS, circleRadiusGPS=MIN_CIRCLE_RADIUS_GPS, circleRadiusMeters=MIN_CIRCLE_RADIUS_METERS, \
-                        searchTimeS=CONSENSUS_ITERATION_LENGTH_SECONDS, taskGroup=(droneName + "Con") )
+                # isSearched = isAlreadySearched(formattedWolfEstimateGPS, MIN_CIRCLE_RADIUS_GPS)
+                # if (not isSearched):
+                # request nearby drones
+                instructWolf.requestNearbyDronesConsensusDecision(circleCenterGPS=formattedWolfEstimateGPS, circleRadiusGPS=MIN_CIRCLE_RADIUS_GPS, \
+                    circleRadiusMeters=MIN_CIRCLE_RADIUS_METERS, searchTimeS=CONSENSUS_ITERATION_LENGTH_SECONDS, taskGroup=(droneName + "Con"), \
+                    clusterName=Cluster, dmDroneName=DM_Drone_Name, waypointIndex=WAYPOINT_INDEX, waypointCoords=WAYPOINT_COORDS )
+                # current Drone switch to consenus
+                startConsensusDecision( circleCenterGPS=formattedWolfEstimateGPS, circleRadiusGPS=MIN_CIRCLE_RADIUS_GPS, circleRadiusMeters=MIN_CIRCLE_RADIUS_METERS, \
+                    searchTimeS=CONSENSUS_ITERATION_LENGTH_SECONDS, taskGroup=(droneName + "Con") )
             else:
                 # detection update gps estimation
                 updateConsensusDecisionStatus(isSuccess=True, successEstimateGPS=formattedWolfEstimateGPS)
@@ -590,8 +677,39 @@ def handleWolfSignal(data):
             with lockConsenus:
                 iterationNum = data.genericInt
                 if (Consensus_Decision_Behavior and iterationNum > Cur_Consensus_Iteration_Number ):
+                    print("SignalGPS")
                     updateConsensusDecisionCenter(signalGPS, iterationNum, result);
 
+def SearchIDUpdateHandler(data):
+    global searchnum
+    searchID = data.searchOperationID
+    taskGroup = data.taskGroup
+
+    # We must update search ID
+    if (taskGroup != Task_Group and searchID != searchnum):
+        print("Drone: ", DM_Drone_Name, " Updating searchID from: ", searchnum, " To: ", searchID)
+        searchnum = searchID
+    else:
+        print("Same taskGroup, no Update. Drone: ", DM_Drone_Name)
+    return
+
+def handleGridUpdate(data):
+    global probableLocation
+    global initialProbSearchNum
+    global bayes_grid
+    gridString = data.data
+    BayesGrid.load_from_string(gridString)
+    max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)  
+    
+    if ((max_prob_index != None) and max_prob_index != probableLocation):
+                probableLocation = max_prob_index
+                BayesGPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
+                WAYPOINT_COORDS.insert(WAYPOINT_INDEX,[BayesGPS[1], BayesGPS[0]])
+                initialProbSearchNum = probSearchNum
+                debugPrint("Inserted Max Prob Waypoint On Update")
+                debugPrint(max_prob_index)
+                debugPrint(max_prob_value)
+    return
 
 def handleEnd(data):
     global End_Loop
@@ -626,6 +744,11 @@ def commandResponse(request):
 
         # Check if we got message from overseer
         if (wolfSearchInfo.taskGroup == EMPTY_TASK_GROUP):
+            # if (wolfSearchInfo.forceConsensus):
+            #     taskGroup = SEARCH_TASK_GROUP + DM_Drone_Name
+            #     debugPrint("Got request wolf search AND consensus decision request from Overseer: " + str(taskGroup))
+            #     startConsensusDecision( circleCenterGPS=wolfSearchInfo.circleCenterGPS, circleRadiusGPS=wolfSearchInfo.circleRadiusGPS, circleRadiusMeters=wolfSearchInfo.circleRadiusMeters, searchTimeS=wolfSearchInfo.searchTimeS, taskGroup=taskGroup )
+            # else:
             # if so create task group with wolf name
             taskGroup = SEARCH_TASK_GROUP + DM_Drone_Name
             debugPrint("Got request wolf search from Overseer: " + str(taskGroup))
@@ -721,6 +844,24 @@ def wolfDataPublisher(pub, client, droneName):
 
     # Publishes to topic
     pub.publish(droneMsg)
+
+def requestGridUpdatePublisher(pub, searchOperationID, longitude, latitude):
+    # Creates droneMsg object and inserts values from AirSim apis
+    requestGridUpdateMessage = requestGridUpdate()
+    requestGridUpdateMessage.searchOperationID = searchOperationID
+    requestGridUpdateMessage.longitude = longitude
+    requestGridUpdateMessage.latitude = latitude
+    
+    # Publishes to topic
+    pub.publish(requestGridUpdateMessage)
+
+def handleSearchIDUpdatePublisher(pub, searchID, taskGroup):
+    handleSearchIDUpdateMessage = handleSearchIDUpdate()
+    handleSearchIDUpdateMessage.searchOperationID = searchID
+    handleSearchIDUpdateMessage.taskGroup = taskGroup
+
+    # Publishes to topic
+    pub.publish(handleSearchIDUpdateMessage)
 # Ros Publishers End +++++++++++++++++++++++++++++++++++
 
 # TODO: Functions need to Refatctor +++++++++++++++++++++++++++++++++++
@@ -777,6 +918,7 @@ def startWolfSearch( circleCenterGPS, circleRadiusGPS, circleRadiusMeters, sprea
     global Start_Time, Spread_Time, Search_Time;
     global Task_Group;
     global In_Position_WS
+    global searchnum
 
     global DM_Drone_Name
     with lock:
@@ -787,6 +929,7 @@ def startWolfSearch( circleCenterGPS, circleRadiusGPS, circleRadiusMeters, sprea
         Task_Group = taskGroup;
         In_Position_WS = False
         Wolf_Search_Behavior = True;
+        # print("Searchnum: ", searchnum)
 
 def wolfSearchBehaviorGetVector(wolfCommPublish, client, currentDroneData):
     radius = Circle_Radius_GPS
@@ -861,6 +1004,7 @@ def startConsensusDecision( circleCenterGPS, circleRadiusGPS, circleRadiusMeters
     global Task_Group;
     global In_Position_CD, Cur_Consensus_Iteration_Number;
     global Success_Det_Count, Fail_Det_Count
+    global searchnum
 
     updateConsensusWaypointHistory(circleCenterGPS)
     with lock:
@@ -913,12 +1057,18 @@ def consensusDecisionBehaviorGetVector(currentDroneData):
 
     return vector;
 
-def updateConsensusDecisionCenter(circleCenterGPS, currIterationNum, result):
+def updateConsensusDecisionCenter(circleCenterGPS, currIterationNum, result, originalSearchGPS=(0.0,0.0)):
     global Circle_Center_GPS, Cur_Consensus_Iteration_Number, Start_Time, In_Position_CD;
     global Task_Group
     global Success_Det_Count, Fail_Det_Count
     global End_Loop
     global Final_Target, Final_Target_Found 
+    global searchnum
+    global probableLocation
+    global bayes_grid
+    global probSearchNum
+
+    probLocation = probableLocation
     if (result and currIterationNum < MAX_CONSENSUS_ITERATION_NUMBER):
         with lock:
             In_Position_CD = False
@@ -949,13 +1099,40 @@ def updateConsensusDecisionCenter(circleCenterGPS, currIterationNum, result):
                 endTaskPublish.publish("e")
                 with lock:
                     End_Loop = True
+            else:
+                # debugPrint("NOT TARGET 1")
+                requestBayesGridUpdate(originalSearchGPS)
         # consenus decion no target found
+        wolfDataArray = wolfGetWolfData.getWolfDataOfTaskGroupExSelf(DM_Drone_Name, Task_Group);
+        requestBayesGridUpdate(originalSearchGPS)
+        print("Length of wolfDataArray: ", len(wolfDataArray))
+        #if (len(wolfDataArray) == 3):
+        print("Consensus Searchnum++. Before Update: ", searchnum, "Drone: ", DM_Drone_Name)
+        searchnum += 1
+        searchIDUpdate(searchnum, Task_Group)
+        searchGPSIndex = bayes_grid.gps_to_grid(originalSearchGPS.latitude, originalSearchGPS.longitude)
+        if (probLocation):
+            if (searchGPSIndex[0] == probLocation[0] and searchGPSIndex[1] == probLocation[1]):
+                probSearchNum += 1
+                print("Prob Search num++: ", probSearchNum)
+        # debugPrint("NOT TARGET 2")
+        # print("GPS TEST:",originalSearchGPS)
         global Consensus_Decision_Behavior;
         if (Consensus_Decision_Behavior):
             endConsensusDecision();
         else:
             debugPrint("consenus already ended")
         
+def requestBayesGridUpdate(GPS):
+    global requestGridUpdatePublish
+    global searchnum
+    with lock:
+        requestGridUpdatePublisher(pub=requestGridUpdatePublish,searchOperationID=searchnum, longitude=GPS.longitude, latitude=GPS.latitude)
+    
+def searchIDUpdate(searchid, taskGroup):
+    global handleSearchIDUpdatePublish
+    with lock:
+        handleSearchIDUpdatePublisher(pub=handleSearchIDUpdatePublish, searchID=searchid, taskGroup=taskGroup)
 
 def endConsensusDecision():
     global Consensus_Decision_Behavior;
@@ -970,7 +1147,7 @@ def endConsensusDecision():
         # Circle_Radius_GPS, Circle_Radius_Meters = None, None;
         # Start_Time, Search_Time = None, None;
         Task_Group = "";
-    
+
 def updateConsensusWaypointHistory(waypoint):
     global Consensus_Waypoint_History
     with lock:

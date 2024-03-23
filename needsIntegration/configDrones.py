@@ -1,4 +1,3 @@
-# Move this file to DroneSwarm\Constants and change LOCAL_IP
 # shared non export
 min_circle_radius_gps = 0.00008983152373552244
 # shared end
@@ -57,3 +56,22 @@ SPIRAL_LOCATION_1 = [0, 0.0011228941075]
 # MIN_CIRCLE_RADIUS_GPS
 # MIN_CIRCLE_RADIUS_METERS
 # consenus end
+# Bayes Start
+BAYES_THEOREM_ENABLED = True
+GRID_SIZE = (10,10)
+# GRID_SIZE = (10,20)
+BOTTOM_LEFT_BOUND = (0.000011918283978328166, -0.001399509301795458) # Represented as (Latitude, Longitude)
+TOP_RIGHT_BOUND = (0.0034486192728120134, 0.0020140817258013266)
+# This coords are for Armandos old world
+# BOTTOM_LEFT_BOUND = (0.00014477851375283054,-0.0041943628509558415) # Represented as (Latitude, Longitude)
+# TOP_RIGHT_BOUND = (0.004516586943213801, 0.004839834080485371)
+EVIDENCE = 0.3 # This value is changeable. It is the probability that if we search a cell we should find the target if the target is there (30 percent error currently)
+grid_width = TOP_RIGHT_BOUND[1] - BOTTOM_LEFT_BOUND[1]
+grid_height = TOP_RIGHT_BOUND[0] - BOTTOM_LEFT_BOUND[0]
+# this is the width and height of each index/grid space
+grid_index_width = grid_width/GRID_SIZE[1] 
+grid_index_height = grid_height/GRID_SIZE[0]
+SIGNIFICANCE_THRESHOLD = -1 # 0.001
+THRESHOLD_LAT = 0.0001
+THRESHOLD_LON = 0.0001
+# Bayes End

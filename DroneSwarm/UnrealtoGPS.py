@@ -10,14 +10,18 @@ client.confirmConnection()
 client.enableApiControl(True, droneName)
 client.armDisarm(True, droneName)
 client.takeoffAsync(vehicle_name=droneName).join()
-
+client.moveToZAsync(z=-100, velocity=8, vehicle_name = droneName).join()
 
 # Ok so the offset is 11. You have to get the absolute location of an object during runtime and divide that Unreal Coord by 100 (cm to m) then subtract offset.
 positions = [
-    (502.79527344 - 10, 548.28460938 - 4, -10),
-    (17.44185791 - 10, 548.29382812 - 4, -10),
-    (17.30290283 - 10, -463.49074219 - 4, -10),
-    (502.69332031 - 10, -463.41339844 - 4, -10)
+    (380.830 - 10, 223.810 - 4, -100),
+    (1.930 - 10, -155.290 - 4, -100),
+
+    # (502.79527344 - 10, 548.28460938 - 4, -10),
+    # (17.44185791 - 10, 548.29382812 - 4, -10),
+    # (17.30290283 - 10, -463.49074219 - 4, -10),
+    # (502.69332031 - 10, -463.41339844 - 4, -10)
+
     # (0.004646968378418462,  0.004564568027176327, 10),
     # ( 0.00024996666641051104, 0.004574718382269764, 10),
     # (0.0002027471053771984, -0.004475452495970286, 10),
