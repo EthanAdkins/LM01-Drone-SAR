@@ -32,7 +32,7 @@ if not os.path.exists(logdir):
 class CustomCombinedExtractor(BaseFeaturesExtractor):
     def __init__(self, observation_space: gymnasium.spaces.Dict):
         # super().__init__(observation_space, features_dim=512)  # Adjust features_dim as needed
-        super(CustomCombinedExtractor, self).__init__(observation_space, features_dim=240)
+        super(CustomCombinedExtractor, self).__init__(observation_space, features_dim=1)
 
         # Define ResNet-18 backbone
         # ResNet18's original conv1 parameters: 64 output channels, kernel size of 7, stride of 2, padding of 3
@@ -47,7 +47,7 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
         num_ftrs = self.resnet.fc.in_features
         
         # Define the number of output features for your task, e.g., 10 for a 10-class classification
-        num_output_features = 256
+        num_output_features = 9 # change this to 9 and debug
         
         # Replace the last fully connected layer with a custom linear layer
         self.resnet.fc = nn.Linear(num_ftrs, num_output_features)
@@ -67,23 +67,26 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
             total_concat_size += 16  # Assuming 16 features for each non-image feature
         
         # Update the total feature dimension
-        self._features_dim += total_concat_size
+        self._features_dim += total_concat_size - 8 #there's an 8 extra for some reason so we're subtracting?
 
     def forward(self, observations: Dict[str, th.Tensor]) -> th.Tensor:
         # Process image observations with ResNet-18 backbone
         image = observations["image"] / 255.  # Normalize image
         image_features = self.resnet(image)
         image_features = th.flatten(image_features, start_dim=1)
-      
+        
+    
         encoded_tensor_list = []
         encoded_tensor_list.append(image_features)
 
         # Process non-image observations
         for key, extractor in self.additional_extractors.items():
             encoded_tensor_list.append(extractor(observations[key]))
-      
+    
 
         combined_features = th.cat(encoded_tensor_list, dim=1)
+
+        # implement MLP 
 
         return combined_features
     
@@ -104,7 +107,8 @@ env = VecTransposeImage(env)
 model = DQN(
     "MultiInputPolicy",
     env,
-    learning_rate=0.001, #0.00025
+    # increase learning rate?
+    learning_rate=0.01, #0.00025
     # learning_rate=linear_schedule(1.0),
     verbose=1,
     # batch_size=64, #128  #32
@@ -112,13 +116,13 @@ model = DQN(
     train_freq=4,
     # target_update_interval=5_000, #5_000
     target_update_interval=5_000,
-    learning_starts=4000 , 
+    learning_starts=3000 , 
     policy_kwargs=policy_kwargs,
-    buffer_size=90_000, 
+    buffer_size=50_000, 
     # buffer_size=70_000,
     max_grad_norm=10,
     # exploration_fraction=0.8, #0.1
-    exploration_fraction=0.9,
+    exploration_fraction=0.8,
     exploration_final_eps=0.05,
     device="cuda",
     tensorboard_log=logdir

@@ -230,11 +230,14 @@ class drone_env(gymnasium.Env):
         reward = 0
 
         curr_distance, previous_distance = self.get_distance()
+        # calculate euclidean distance between prev distance from goal and curr distance from goal, 
+        # and subtract it with euclidean distance between previous agent position and current agent position
         reward += (previous_distance - curr_distance) - np.linalg.norm(self.info["prev_position"]-self.info["position"])
         # reward += (previous_distance - curr_distance) * 10
         print("original distance from Goal: " + str(self.original_distance))
         print("current distance from Goal: " + str(curr_distance))
         
+
         if curr_distance <= self.goals[self.sub_goal]:
             print("Level: "+str(self.sub_goal))
             self.sub_goal += 1 
@@ -249,7 +252,7 @@ class drone_env(gymnasium.Env):
         tolerance = 0.001
         if abs(previous_distance - curr_distance) <= tolerance:
             reward -= 1
-            self.no_movement += 1
+            self.no_movement += 1 # implement later: restart self movement count once drone do a positive action
             print(f"current number of idle movements: {self.no_movement}")
 
         # if the prev_dist is less then curr_dist, then we got further from the target
@@ -274,18 +277,18 @@ class drone_env(gymnasium.Env):
         # if -2 <= self.state["relative_distance"][0] <= 2 and -2 <= self.state["relative_distance"][1] <= 2:
         if curr_distance < 8.0:
         # if self.state["relative_distance"][0] < 2:
-            reward += 100
+            reward += 300
             self.info["goalreached"] = True
             print("System: Goal Reached.")
             done = True
         # check if drone has been doing no action for the past 10 actions (Action history)
         elif self.no_movement == 10:
             print(f"System: Drone had not moved after {self.no_movement} actions")
-            reward -= 100
+            reward -= 50
             done = True
         elif self.info["collision"]:
             print("System: Drone collision.")
-            reward -= 100
+            reward -= 150
             done = True
         elif curr_distance >= 200:
             print("System: Drone is TOO far from target.")
