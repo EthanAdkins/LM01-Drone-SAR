@@ -252,8 +252,11 @@ class drone_env(gymnasium.Env):
         tolerance = 0.001
         if abs(previous_distance - curr_distance) <= tolerance:
             reward -= 1
-            self.no_movement += 1 # implement later: restart self movement count once drone do a positive action
+            self.no_movement += 1
             print(f"current number of idle movements: {self.no_movement}")
+        else:
+            # reset counter to 0
+            self.no_movement = 0 
 
         # if the prev_dist is less then curr_dist, then we got further from the target
         # and give them a slight penalty to show they are going in the wrong direction
@@ -277,7 +280,7 @@ class drone_env(gymnasium.Env):
         # if -2 <= self.state["relative_distance"][0] <= 2 and -2 <= self.state["relative_distance"][1] <= 2:
         if curr_distance < 8.0:
         # if self.state["relative_distance"][0] < 2:
-            reward += 300
+            reward += 400
             self.info["goalreached"] = True
             print("System: Goal Reached.")
             done = True

@@ -8,7 +8,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.callbacks import EvalCallback
-from stable_baselines3.common.callbacks import CheckpointCallback, StopTrainingOnNoModelImprovement
+from stable_baselines3.common.callbacks import CheckpointCallback, StopTrainingOnNoModelImprovement, ProgressBarCallback
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 import torch as th
 from torch import nn
@@ -107,8 +107,7 @@ env = VecTransposeImage(env)
 model = DQN(
     "MultiInputPolicy",
     env,
-    # increase learning rate?
-    learning_rate=0.01, #0.00025
+    learning_rate=0.1,
     # learning_rate=linear_schedule(1.0),
     verbose=1,
     # batch_size=64, #128  #32
@@ -116,14 +115,14 @@ model = DQN(
     train_freq=4,
     # target_update_interval=5_000, #5_000
     target_update_interval=5_000,
-    learning_starts=3000 , 
+    learning_starts=4000 , 
     policy_kwargs=policy_kwargs,
-    buffer_size=50_000, 
+    buffer_size=75_000, 
     # buffer_size=70_000,
     max_grad_norm=10,
     # exploration_fraction=0.8, #0.1
-    exploration_fraction=0.8,
-    exploration_final_eps=0.05,
+    exploration_fraction=0.7,
+    exploration_final_eps=0.04,
     device="cuda",
     tensorboard_log=logdir
 )
@@ -139,21 +138,25 @@ checkpoint_callback = CheckpointCallback(
     save_vecnormalize=True,
 )
 
-stop_train_callback = StopTrainingOnNoModelImprovement(
-    max_no_improvement_evals=20, 
-    min_evals=80, 
-    verbose=1
-)
+# stop_train_callback = StopTrainingOnNoModelImprovement(
+#     max_no_improvement_evals=20, 
+#     min_evals=80, 
+#     verbose=1
+# )
 
 eval_callback = EvalCallback(
     env,
     callback_on_new_best=None,
     n_eval_episodes=5,
-    callback_after_eval=stop_train_callback,
+    # callback_after_eval=stop_train_callback,
     best_model_save_path="./CheckPoints/DQN/BestModel/",
     log_path="./CheckPoints/DQN/BestModel/",
     eval_freq=500,
 )
+
+# Create a progress bar callback to estimate time left
+progress_bar_callback = ProgressBarCallback()
+callbacks.append(progress_bar_callback)
 
 callbacks.append(eval_callback)
 callbacks.append(checkpoint_callback)
@@ -161,7 +164,7 @@ callbacks.append(checkpoint_callback)
 kwargs = {}
 kwargs["callback"] = callbacks
 
-TIMESTEPS = 60_000
+TIMESTEPS = 65_000
 
 model.learn(
     total_timesteps=TIMESTEPS,
