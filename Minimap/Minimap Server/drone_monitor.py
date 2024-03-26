@@ -46,8 +46,7 @@ class DroneMonitor:
                 drone.x = kinematicState.position.x_val + drone.x_offset
                 drone.y = kinematicState.position.y_val + drone.y_offset
                 drone.z = kinematicState.position.z_val + drone.z_offset
-                yaw = multiRotorState.kinematics_estimated.orientation.to_eularian_angles()[
-                    2]  # Assuming yaw needs calculation
+                yaw = 0#multiRotorState.kinematics_estimated.orientation.to_eularian_angles()[ 2]  # Assuming yaw needs calculation
 
                 drone_update = UpdateDrone(drone.drone_name, latitude, longitude, altitude, velocity, drone.x, drone.y, drone.z, yaw)
                 await self.broadcast(json.dumps(drone_update.__dict__))

@@ -138,6 +138,7 @@ def mapHandlerSub():
     rospy.spin()
 
 def updateResponseQ(data, args):
+
     updateMapHandler(data)
     print("Update Response Q")
     print(data)
@@ -154,7 +155,8 @@ def updateResponseQ(data, args):
     print(f"Wolf Position Longitude: {longitude}")
     print(f"Wolf Position Altitude: {altitude}")
 
-def updateMapHandler(data):
+def updateMapHandler(data, detectMap):
+    global PREVIOUS_GPS_POSITIONS, PREVIOUS_OVERSEER_GPS_POSITIONS
     # Gets the update type from the data
     updateMapType = data.updateType
 
@@ -162,7 +164,16 @@ def updateMapHandler(data):
     wolfPositionTuple = GPSToTuple(data.wolfPosition)
     targetPositionTuple = GPSToTuple(data.targetPosition)
 
+    # Add true target position
+    if (updateMapType == FINAL_TARGET_POSITION):
+        targetPositionTuple = GPSToTuple(data.targetPosition)
+        handleTargetPosition(finalTargetPosition=targetPositionTuple, detectMap=detectMap)
 
+    # Add gps prediction
+    elif (updateMapType == NEW_GPS_PREDICTION):
+        # Gets necessary variables
+        wolfPositionTuple = GPSToTuple(data.wolfPosition)
+        predictedPosition = GPSToTuple(data.targetPosition)
         imageNumber = data.imageNumber
         vehicleName = data.wolfNumber
         isOverseer = data.isOverseer
