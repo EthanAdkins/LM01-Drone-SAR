@@ -6,6 +6,9 @@ import Data
 from Data import DroneData
 from Messages import UpdateDrone
 
+landscape_offset_x = 70006.818462/100
+landscape_offset_y = -76399.472497/100
+landscape_offset_z = 28302.063755/100
 
 class DroneMonitor:
     def __init__(self, broadcast_callback):
@@ -43,9 +46,9 @@ class DroneMonitor:
                 longitude = kinematicState.position.y_val
                 altitude = kinematicState.position.z_val
                 velocity = kinematicState.linear_velocity.get_length()
-                drone.x = kinematicState.position.x_val + drone.x_offset
-                drone.y = kinematicState.position.y_val + drone.y_offset
-                drone.z = kinematicState.position.z_val + drone.z_offset
+                drone.x = kinematicState.position.x_val + drone.x_offset + landscape_offset_x
+                drone.y = kinematicState.position.y_val + drone.y_offset + landscape_offset_y
+                drone.z = kinematicState.position.z_val + drone.z_offset + landscape_offset_z
                 yaw = 0#multiRotorState.kinematics_estimated.orientation.to_eularian_angles()[ 2]  # Assuming yaw needs calculation
 
                 drone_update = UpdateDrone(drone.drone_name, latitude, longitude, altitude, velocity, drone.x, drone.y, drone.z, yaw)

@@ -34,11 +34,12 @@ async def unregister(websocket):
     swarm_clients.discard(websocket)  # Remove from both sets to ensure clean up
 
 
-async def handle_authentication(websocket, data):
+async def handle_authentication(websocket, data, drone_monitor):
     client_type = data.get("client_type")
     if client_type == "minimap":
         minimap_clients.add(websocket)
         print(f"Minimap client connected: {websocket.remote_address}")
+        await drone_monitor.send_drone_creation_messages(websocket)
     elif client_type == "swarm":
         swarm_clients.add(websocket)
         print(f"Swarm client connected: {websocket.remote_address}")
@@ -46,13 +47,13 @@ async def handle_authentication(websocket, data):
         print(f"Unknown client type: {client_type}")
 
 
-async def process_message(websocket, message):
+async def process_message(websocket, message, drone_monitor):
     try:
         data = json.loads(message)
         message_type = data.get("message_type")
 
         if message_type == "authentication":
-            await handle_authentication(websocket, data)
+            await handle_authentication(websocket, data, drone_monitor)
         else:
             print(f"Unhandled message type: {message_type}")
     except json.JSONDecodeError as e:
@@ -64,7 +65,7 @@ async def websocket_server(websocket, path, drone_monitor):
     try:
         async for message in websocket:
             print(f"Received message from {websocket.remote_address}: {message}")
-            await process_message(websocket, message)
+            await process_message(websocket, message, drone_monitor)
     except websockets.exceptions.ConnectionClosed as e:
         print(f"Connection closed with {websocket.remote_address}, reason: {e}")
     except Exception as e:
@@ -74,8 +75,11 @@ async def websocket_server(websocket, path, drone_monitor):
 
 
 async def start_server(settingsFile):
-    drone_monitor = DroneMonitor(broadcast_to_all)
+    drone_monitor = DroneMonitor(broadcast_to_minimap)
     drone_monitor.Setup(settingsFile)
+
+    # Start monitoring drones in a background task
+    monitor_task = asyncio.create_task(drone_monitor.monitor_drones())
 
     async with websockets.serve(lambda ws, path: websocket_server(ws, path, drone_monitor), "0.0.0.0", 8765):
         await asyncio.Future()  # Run forever
