@@ -53,6 +53,7 @@ class DroneMonitor:
 
                 drone_update = UpdateDrone(drone.drone_name, latitude, longitude, altitude, velocity, drone.x, drone.y, drone.z, yaw)
                 await self.broadcast(json.dumps(drone_update.__dict__))
+
             await asyncio.sleep(1 / 20)
 
     async def send_drone_creation_messages(self, websocket):

@@ -77,7 +77,6 @@ async def websocket_server(websocket, path, drone_monitor):
     await register(websocket, drone_monitor)
     try:
         async for message in websocket:
-            print(f"Received message from {websocket.remote_address}: {message}")
             await process_message(websocket, message, drone_monitor)
     except websockets.exceptions.ConnectionClosed as e:
         print(f"Connection closed with {websocket.remote_address}, reason: {e}")
