@@ -23,6 +23,7 @@ import threading
 import asyncio
 import websockets
 import threading
+import queue
 
 import ServiceRequestors.overseerGetWolfData as overseerGetWolfData
 import ServiceRequestors.overseerGetOverseerData as overseerGetOverseerData
@@ -55,66 +56,60 @@ WOLF_COUNT = None
 # Global variable to store the WebSocket connection
 websocket_connection = None
 WEBSOCKET_SERVER_URL = "ws://172.23.0.1:8765"
+message_queue = queue.Queue()
 
-# Event loop for asynchronous tasks
-loop = asyncio.get_event_loop()
-
-async def connect_and_listen(uri):
-    global websocket_connection
+async def websocket_client(uri, message_handler):
     while True:
         try:
-            websocket_connection = await websockets.connect(uri)
-            print("Connected to WebSocket server at:", uri)
-            auth_message = json.dumps({"client_type": "swarm", "message_type": "authentication"})
-            await websocket_connection.send(auth_message)
-            print("Authentication message sent.")
-            # Listen for and handle incoming messages
-            async for message in websocket_connection:
-                print(f"Received message: {message}")
-                # Insert handling of incoming message here
-        except websockets.exceptions.ConnectionClosed:
-            print("Connection closed, attempting to reconnect...")
-            await asyncio.sleep(5)
+            async with websockets.connect(uri) as websocket:
+                print(f"Connected to WebSocket server at: {uri}")
+                # Authentication message
+                await websocket.send(json.dumps({"client_type": "swarm", "message_type": "authentication"}))
+                print("Authentication message sent.")
+
+                async def send_from_queue():
+                    while True:
+                        message = await asyncio.get_event_loop().run_in_executor(None, message_queue.get)
+                        await websocket.send(message)
+                        message_queue.task_done()
+
+                sender_task = asyncio.ensure_future(send_from_queue())
+
+                while True:
+                    message = await websocket.recv()
+                    print(f"Received message: {message}")
+                    await message_handler(message)
         except Exception as e:
-            print(f"WebSocket error: {e}")
+            print(f"WebSocket error: {e}, attempting to reconnect in 5 seconds...")
             await asyncio.sleep(5)
 
-
-
-def start_websocket_connection(uri):
-    """Schedules the WebSocket connection in the event loop."""
-
-    # Initialize the event loop in a separate thread
-    thread = Thread(target=start_asyncio_loop)
-    thread.daemon = True
-    thread.start()
-
-    asyncio.run_coroutine_threadsafe(connect_and_listen(uri), asyncio.get_event_loop())
-
-
-def start_asyncio_loop():
-    """Starts the asyncio event loop in a background thread."""
-    loop = asyncio.new_event_loop()  # Create a new event loop
-    asyncio.set_event_loop(loop)  # Set the new event loop as the current one
-    loop.run_forever()
-
-async def send_message_async(message):
-    global websocket_connection
-    if websocket_connection:
-        await websocket_connection.send(message)
-    else:
-        print("WebSocket connection is not established.")
 
 def send_message(message):
-    # Wrapper to send a message through the WebSocket from synchronous code
-    asyncio.run_coroutine_threadsafe(send_message_async(message), loop)
+    global message_queue
+    # Convert the message to JSON format if it's not already a string
+    if not isinstance(message, str):
+        message = json.dumps(message)
+    message_queue.put_nowait(message)
 
-# Main Process Start ----------------------------------------------
+
+async def handle_message(message):
+    print(f"Processing message: {message}")
+    # Process the message here
+
+
+def start_websocket_client_thread(uri):
+    def thread_target():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(websocket_client(uri, handle_message))
+        loop.close()
+
+    thread = threading.Thread(target=thread_target, daemon=True)
+    thread.start()
+
 def startMapHandler(wolfCount):
     print("Starting map handler...")
-    # Schedule WebSocket connection
-    start_websocket_connection(WEBSOCKET_SERVER_URL)
-
+    start_websocket_client_thread(WEBSOCKET_SERVER_URL)
     print("Map socket fully started")
 
     global BATCH_TIME, START_TIME, WOLF_COUNT
@@ -150,11 +145,8 @@ def updateOverseerData(data, args):
         "cluster_name": cluster_name,
         "drone_names": wolf_names
     })
-
-    print("Updating cluster1111")
     # Send the message to the WebSocket server
     send_message(update_clusters_message)
-    print("Updating cluster")
 
 
 def globalVarSetup(droneCount):
