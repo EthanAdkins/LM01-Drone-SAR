@@ -1,6 +1,8 @@
 import asyncio
 import json
 import websockets
+
+from Messages.update_drone_cluster import UpdateDroneCluster
 from drone_monitor import DroneMonitor  # Ensure this path is correct
 
 # Define separate sets for different types of clients
@@ -54,10 +56,21 @@ async def process_message(websocket, message, drone_monitor):
 
         if message_type == "authentication":
             await handle_authentication(websocket, data, drone_monitor)
+        elif message_type == "UpdateClusters":  # Handle the new message type
+            cluster_name = data.get("cluster_name")
+            drone_names = data.get("drone_names")
+            # Construct the update_drone_cluster message
+            print("Got cluster update")
+            update_message = UpdateDroneCluster(cluster_name, drone_names)
+            # Convert the update message to JSON for transmission
+            update_message_json = json.dumps(update_message.to_dict())
+            # Broadcast to minimap clients
+            await broadcast_to_minimap(update_message_json)
         else:
             print(f"Unhandled message type: {message_type}")
     except json.JSONDecodeError as e:
         print(f"Error decoding message: {e}")
+
 
 
 async def websocket_server(websocket, path, drone_monitor):
@@ -81,7 +94,13 @@ async def start_server(settingsFile):
     # Start monitoring drones in a background task
     monitor_task = asyncio.create_task(drone_monitor.monitor_drones())
 
-    async with websockets.serve(lambda ws, path: websocket_server(ws, path, drone_monitor), "0.0.0.0", 8765):
+    async with websockets.serve(
+            lambda ws, path: websocket_server(ws, path, drone_monitor),
+            "0.0.0.0",
+            8765,
+            ping_interval=10,  # Send a ping every 10 seconds
+            ping_timeout=30  # Timeout if no pong is received within 30 seconds
+    ):
         await asyncio.Future()  # Run forever
 
 
