@@ -64,6 +64,7 @@ MIN_CIRCLE_PADDING_FOR_SEARCH_HISTORY = configDrones.MIN_CIRCLE_PADDING_FOR_SEAR
 MAX_WAYPOINT_SAVE_TIME = configDrones.MAX_WAYPOINT_SAVE_TIME
 GRID_SIZE = configDrones.GRID_SIZE
 SIGNIFICANCE_THRESHOLD = configDrones.SIGNIFICANCE_THRESHOLD
+OVERSEER_DRONE_HEIGHT = configDrones.OVERSEER_DRONE_HEIGHT
 # ros: topics
 OVERSEER_DATA_TOPIC = ros.OVERSEER_DATA_TOPIC
 OVERSEER_COMMUNICATION_TOPIC = ros.OVERSEER_COMMUNICATION_TOPIC
@@ -154,7 +155,7 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
     overseerGridUpdatePublish = rospy.Publisher(GRID_UPDATED_TOPIC, String, latch=True, queue_size=1)
     # Sets client and takes off drone
     client = takeOff(droneName)
-    client.moveToZAsync(z=-40, velocity=8, vehicle_name = droneName).join()
+    client.moveToZAsync(z=OVERSEER_DRONE_HEIGHT, velocity=8, vehicle_name = droneName).join()
 
     # client = takeOff("TestOverseer")
     # client.moveToZAsync(z=-10, velocity=8, vehicle_name = "TestOverseer").join()
@@ -266,8 +267,9 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
         outputForWaypoint = "Waypoint to move to: " + str(waypoint) + " END GPS: " + str(endGPS)
         # debugPrint(outputForWaypoint)
         vector = lineBehaviorOverseer.overseerWaypoint(client, int(droneNum), waypoint, endWaypoint)
-
-        client.moveByVelocityZAsync(vector[1], vector[0], -40, duration = 1, vehicle_name=droneName)
+        get_alt = -(client.getDistanceSensorData("Distance", droneName).distance)
+        height_dif = OVERSEER_DRONE_HEIGHT - get_alt
+        client.moveByVelocityAsync(vector[1], vector[0], height_dif, duration = 1, vehicle_name=droneName)
 
         # client.moveByVelocityZAsync(vector[1], vector[0], -10, duration = 1, vehicle_name="TestOverseer")
 

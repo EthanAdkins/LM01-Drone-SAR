@@ -73,6 +73,7 @@ MAX_COLLISION_TIME =configDrones.MAX_COLLISION_TIME
 MIN_COLLISION_TIME = configDrones.MIN_COLLISION_TIME
 GRID_SIZE = configDrones.GRID_SIZE
 SIGNIFICANCE_THRESHOLD = configDrones.SIGNIFICANCE_THRESHOLD
+WOLF_DRONE_HEIGHT = configDrones.WOLF_DRONE_HEIGHT
 # ros: topics
 SLAM_MERGE_TOPIC = ros.SLAM_MERGE_TOPIC # TODO
 WOLF_DATA_TOPIC = ros.WOLF_DATA_TOPIC
@@ -226,7 +227,7 @@ def wolfDroneController(droneName, droneCount, overseerCount):
     handleSearchIDUpdatePublish = rospy.Publisher(HANDLE_SEARCHID_UPDATE_TOPIC, handleSearchIDUpdate, latch=True,queue_size=1)
     # Sets and connects to client and takes off drone
     client = takeOff(droneName)
-    client.moveToZAsync(z=-5, velocity=8, vehicle_name = droneName).join()
+    client.moveToZAsync(z=WOLF_DRONE_HEIGHT, velocity=8, vehicle_name = droneName).join()
 
     # start camera thread here
     t3 = threading.Thread(target = wolfCameraDetection, args=(droneName))
@@ -304,6 +305,11 @@ def wolfDroneController(droneName, droneCount, overseerCount):
         #     debugPrint("Inserted Max Prob Waypoint: ")
         #     debugPrint(max_prob_index)
         #     debugPrint(max_prob_value)
+
+        get_alt = -(client.getDistanceSensorData("Distance", droneName).distance)
+        height_dif = WOLF_DRONE_HEIGHT - get_alt
+
+        get_dist = client.getDistanceSensorData("Distance2", droneName).distance
 
         timeDiff = time.time() - Collision_Mode_Time
         if((doCollision) and (closestTreeName != tempTree)):
@@ -510,7 +516,13 @@ def wolfDroneController(droneName, droneCount, overseerCount):
         vector = calcHelper.turningCalculation(curDroneVelocity, vector, MAX_TURN_ANGLE)
 
         if (isChangeVelocity):
-            client.moveByVelocityZAsync(vector[0], vector[1], -5, duration = 10, yaw_mode=yaw_mode, vehicle_name=droneName)
+            # if (droneName == "0"):
+            #     print("Altitude: ", get_alt, "Vector: ", vector, " Height Dif: ", height_dif)
+            if (get_dist < 3):
+                print("GOING TO HIT SOMETHING")
+                client.moveByVelocityAsync(vector[0]/(4-get_dist), vector[1]/(5-get_dist), height_dif*2, duration = 10, yaw_mode=yaw_mode, vehicle_name=droneName)
+            else:
+                client.moveByVelocityAsync(vector[0], vector[1], height_dif, duration = 10, yaw_mode=yaw_mode, vehicle_name=droneName)
 
         # artifical loop delay (How fast the loop runs dictates the drones reaction speed)
         end = time.time();
@@ -1099,9 +1111,10 @@ def updateConsensusDecisionCenter(circleCenterGPS, currIterationNum, result, ori
                 endTaskPublish.publish("e")
                 with lock:
                     End_Loop = True
-            else:
+            #else:
                 # debugPrint("NOT TARGET 1")
-                requestBayesGridUpdate(originalSearchGPS)
+                # requestBayesGridUpdate(originalSearchGPS)
+                #continue
         # consenus decion no target found
         wolfDataArray = wolfGetWolfData.getWolfDataOfTaskGroupExSelf(DM_Drone_Name, Task_Group);
         requestBayesGridUpdate(originalSearchGPS)

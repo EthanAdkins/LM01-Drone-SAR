@@ -14,8 +14,11 @@ client.moveToZAsync(z=-100, velocity=8, vehicle_name = droneName).join()
 
 # Ok so the offset is 11. You have to get the absolute location of an object during runtime and divide that Unreal Coord by 100 (cm to m) then subtract offset.
 positions = [
-    (380.830 - 10, 223.810 - 4, -100),
-    (1.930 - 10, -155.290 - 4, -100),
+    (120.550 - 10, -513.240 - 4, -600),
+    #(37.220 - 10, -644.570 - 4, -600)
+
+    # (380.830 - 10, 223.810 - 4, -100),
+    # (1.930 - 10, -155.290 - 4, -100),
 
     # (502.79527344 - 10, 548.28460938 - 4, -10),
     # (17.44185791 - 10, 548.29382812 - 4, -10),
@@ -30,7 +33,7 @@ positions = [
 
 
 for position in positions:
-    client.moveToPositionAsync(*position, velocity = 10, vehicle_name=droneName).join()
+    client.moveToPositionAsync(*position, velocity = 30, vehicle_name=droneName).join()
     # Get GPS data
     time.sleep(13)
     _, lat, lon = getInfo.getDroneGPS("0", client)
@@ -39,5 +42,8 @@ for position in positions:
     print("Unreal Coords: ", position)
     print("Latitude: {}".format(lat))
     print("Longitude: {}\n".format(lon))
+
+# client.moveToGPSAsync(latitude=0.0026853068927250876, longitude=-0.00018847169112613604, altitude=100, velocity=10).join()
+print("AT LOCATION")
 
 

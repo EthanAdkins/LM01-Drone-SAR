@@ -42,16 +42,28 @@ def getSegInfo(responses):
 
     return height, width, segRGB
 
-def getHeightWidthArr(responses, responseIndex):
+def split_image(image, chunk_height, chunk_width):
+    height, width, _ = image.shape
+    chunks = []
+    for y in range(0, height, chunk_height):
+        for x in range(0, width, chunk_width):
+            chunk = image[y:y+chunk_height, x:x+chunk_width]
+            chunks.append(chunk)
+    return chunks
+
+def getHeightWidthArr(responses, responseIndex, chunk_height=288, chunk_width=512):
     responseSeg = responses[responseIndex]
 
-    height = responses[responseIndex].height
-    width = responses[responseIndex].width
+    height = responseSeg.height
+    width = responseSeg.width
 
     segArr = np.fromstring(responseSeg.image_data_uint8, dtype=np.uint8)
     segRGB = segArr.reshape(height, width, 3)
 
-    return height, width, segRGB
+    # Splitting the image into chunks
+    chunks = split_image(segRGB, chunk_height, chunk_width)
+
+    return chunk_height, chunk_width, chunks
 
 def getDroneGPS(vehicleName, client):
     gps_data = client.getGpsData(gps_name = "", vehicle_name = vehicleName)
