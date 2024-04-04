@@ -35,7 +35,7 @@ DETECTION_OUTPUT_SERIES = configDrones.DETECTION_OUTPUT_SERIES
 ZOOM_FACTOR = configDrones.ZOOM_FACTOR
 MAX_PIX_COUNT = configDrones.MAX_PIX_COUNT
 SPIRAL_LOCATION_1 = [configDrones.SPIRAL_LOCATION_1[1], configDrones.SPIRAL_LOCATION_1[0]]
-
+LOCAL_IP = configDrones.LOCAL_IP
 # Environmental Variables
 # ros: topics
 MAP_HANDLER_TOPIC = ros.MAP_HANDLER_TOPIC
@@ -56,7 +56,7 @@ WOLF_COUNT = None
 
 # Global variable to store the WebSocket connection
 websocket_connection = None
-WEBSOCKET_SERVER_URL = "ws://172.23.0.1:8765"
+WEBSOCKET_SERVER_URL = f"ws://{LOCAL_IP}:8765"
 message_queue = queue.Queue()
 
 async def websocket_client(uri, message_handler):

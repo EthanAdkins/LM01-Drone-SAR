@@ -14,7 +14,7 @@ client.moveToZAsync(z=-100, velocity=8, vehicle_name = droneName).join()
 
 # Ok so the offset is 11. You have to get the absolute location of an object during runtime and divide that Unreal Coord by 100 (cm to m) then subtract offset.
 positions = [
-    (120.550 - 10, -513.240 - 4, -600),
+    (915.330 - 10, -517.030 - 4, -600),
     #(37.220 - 10, -644.570 - 4, -600)
 
     # (380.830 - 10, 223.810 - 4, -100),

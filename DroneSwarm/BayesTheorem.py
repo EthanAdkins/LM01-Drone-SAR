@@ -51,7 +51,9 @@ class BayesGrid:
         #self.increase_probability_by_gps([0.000021918283978328166,0])
         #self.increase_probability_by_gps([0.003, 0.002])
         #self.increase_probability_by_gps([0.0026853068927250876, -0.00018847169112613604])
+        self.increase_probability_by_gps([0.007343440474028574, 0.0009458342606261818])
         self.increase_probability_by_gps([0.0010895132618108832, -0.0045924587249556925])
+        self.increase_probability_by_gps([0.008344077476878839, -0.004684041800389897])
         return BayesGrid.Grid
 
     def find_max_probability_cell(self, significance_threshold=-1):

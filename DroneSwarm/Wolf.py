@@ -518,8 +518,9 @@ def wolfDroneController(droneName, droneCount, overseerCount):
         if (isChangeVelocity):
             # if (droneName == "0"):
             #     print("Altitude: ", get_alt, "Vector: ", vector, " Height Dif: ", height_dif)
-            if (get_dist < 3):
-                print("GOING TO HIT SOMETHING")
+            if (get_dist < 5):
+                height_dif = min(height_dif, 0) # Clamps the value to be 0 max
+                print("GOING TO HIT SOMETHING: ", height_dif)
                 client.moveByVelocityAsync(vector[0]/(4-get_dist), vector[1]/(5-get_dist), height_dif*2, duration = 10, yaw_mode=yaw_mode, vehicle_name=droneName)
             else:
                 client.moveByVelocityAsync(vector[0], vector[1], height_dif, duration = 10, yaw_mode=yaw_mode, vehicle_name=droneName)
