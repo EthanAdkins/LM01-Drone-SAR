@@ -39,6 +39,7 @@ SPIRAL_LOCATION_1 = [configDrones.SPIRAL_LOCATION_1[1], configDrones.SPIRAL_LOCA
 # Environmental Variables
 # ros: topics
 MAP_HANDLER_TOPIC = ros.MAP_HANDLER_TOPIC
+GRID_UPDATED_TOPIC = ros.GRID_UPDATED_TOPIC
 FINAL_TARGET_POSITION = ros.FINAL_TARGET_POSITION
 NEW_GPS_PREDICTION = ros.NEW_GPS_PREDICTION
 UPDATE_DRONE_POSITION = ros.UPDATE_DRONE_POSITION
@@ -126,10 +127,14 @@ def startMapHandler(wolfCount):
 
 def subTopics():
     # Subscribe to map handler topic
+    print("Subscribing on map handler")
 
     #rospy.Subscriber(OVERSEER_COMMUNICATION_TOPIC, String, handleOverseerCommunication, ())
     rospy.Subscriber(OVERSEER_DATA_TOPIC, droneData, updateOverseerData, ())
+    rospy.Subscriber(GRID_UPDATED_TOPIC, String, handleGridUpdate)
     rospy.spin()
+
+    print("Subscribed on map handler")
 
 
 def updateOverseerData(data, args):
@@ -147,6 +152,18 @@ def updateOverseerData(data, args):
     })
     # Send the message to the WebSocket server
     send_message(update_clusters_message)
+
+def handleGridUpdate(data):
+
+    # Construct the "UpdateClusters" message
+    update_grid_message = json.dumps({
+        "message_type": "UpdateGrid",
+        "data": data.data
+    })
+
+    print("Sending grid!")
+    # Send the message to the WebSocket server
+    send_message(update_grid_message)
 
 
 def globalVarSetup(droneCount):

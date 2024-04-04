@@ -6,9 +6,9 @@ import Data
 from Data import DroneData
 from Messages import UpdateDrone
 
-landscape_offset_x = 70006.818462/100
-landscape_offset_y = -76399.472497/100
-landscape_offset_z = 28302.063755/100
+landscape_offset_x = 15407.818462/100
+landscape_offset_y = -103271.472497/100
+landscape_offset_z = 25060.063755/100
 
 class DroneMonitor:
     def __init__(self, broadcast_callback):
@@ -57,6 +57,19 @@ class DroneMonitor:
             await asyncio.sleep(1 / 20)
 
     async def send_drone_creation_messages(self, websocket):
+        for drone_name, drone_data in self.drones.items():
+            create_drone_message = Messages.CreateDrone(
+                drone_name=drone_data.drone_name,
+                x=drone_data.x_offset,
+                y=drone_data.y_offset,
+                z=drone_data.z_offset
+            )
+            # Serialize the message to JSON and send it
+            message_json = json.dumps(create_drone_message.__dict__)
+            await websocket.send(message_json)
+            print(f"Sent create drone message for {drone_name} to new client")
+
+    async def send_current_bayes(self, websocket):
         for drone_name, drone_data in self.drones.items():
             create_drone_message = Messages.CreateDrone(
                 drone_name=drone_data.drone_name,

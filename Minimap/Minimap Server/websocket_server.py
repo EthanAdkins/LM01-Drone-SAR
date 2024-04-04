@@ -8,7 +8,7 @@ from drone_monitor import DroneMonitor  # Ensure this path is correct
 # Define separate sets for different types of clients
 minimap_clients = set()
 swarm_clients = set()
-
+current_bayes = set()
 
 async def broadcast_to_all(message):
     await asyncio.wait([client.send(message) for client in minimap_clients.union(swarm_clients)])
@@ -42,6 +42,7 @@ async def handle_authentication(websocket, data, drone_monitor):
         minimap_clients.add(websocket)
         print(f"Minimap client connected: {websocket.remote_address}")
         await drone_monitor.send_drone_creation_messages(websocket)
+        await broadcast_to_minimap(current_bayes)
     elif client_type == "swarm":
         swarm_clients.add(websocket)
         print(f"Swarm client connected: {websocket.remote_address}")
@@ -50,6 +51,7 @@ async def handle_authentication(websocket, data, drone_monitor):
 
 
 async def process_message(websocket, message, drone_monitor):
+    global current_bayes
     try:
         data = json.loads(message)
         message_type = data.get("message_type")
@@ -60,14 +62,15 @@ async def process_message(websocket, message, drone_monitor):
             cluster_name = data.get("cluster_name")
             drone_names = data.get("drone_names")
             # Construct the update_drone_cluster message
-            print("Got cluster update")
             update_message = UpdateDroneCluster(cluster_name, drone_names)
             # Convert the update message to JSON for transmission
             update_message_json = json.dumps(update_message.to_dict())
             # Broadcast to minimap clients
             await broadcast_to_minimap(update_message_json)
-        else:
-            print(f"Unhandled message type: {message_type}")
+        elif message_type == "UpdateGrid":
+            print("Updating grid!")
+            current_bayes = message
+            await broadcast_to_minimap(message)
     except json.JSONDecodeError as e:
         print(f"Error decoding message: {e}")
 
