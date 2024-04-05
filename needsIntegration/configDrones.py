@@ -47,7 +47,7 @@ CIRCLE_SPACING = min_circle_radius_gps * 0.2
 # consenus start
 CONSENSUS_DECISION_REQUEST_HELP_DISTANCE_MULTIPLE = 3
 MAX_CONSENSUS_ITERATION_NUMBER = 3
-CONSENSUS_ITERATION_LENGTH_SECONDS = 15
+CONSENSUS_ITERATION_LENGTH_SECONDS = 20
 CONSENSUS_THRESHOLD = 0.2
 YOLO_CONFIDENCE = 0.7
 DETECTION_OUTPUT_SERIES = 'mapFinal05'
@@ -67,7 +67,7 @@ TOP_RIGHT_BOUND = (0.012099109525815327, 0.005509000253722001)
 # This coords are for Armandos old world
 # BOTTOM_LEFT_BOUND = (0.00014477851375283054,-0.0041943628509558415) # Represented as (Latitude, Longitude)
 # TOP_RIGHT_BOUND = (0.004516586943213801, 0.004839834080485371)
-EVIDENCE = 0.3 # This value is changeable. It is the probability that if we search a cell we should find the target if the target is there (30 percent error currently)
+EVIDENCE = 0.6 # This value is changeable. It is the probability that if we search a cell we should find the target if the target is there (30 percent error currently)
 grid_width = TOP_RIGHT_BOUND[1] - BOTTOM_LEFT_BOUND[1]
 grid_height = TOP_RIGHT_BOUND[0] - BOTTOM_LEFT_BOUND[0]
 # this is the width and height of each index/grid space

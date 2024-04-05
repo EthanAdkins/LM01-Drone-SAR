@@ -48,12 +48,32 @@ class BayesGrid:
     def initialize_grid_prior(self, size):
         """ Initialize a probability grid with clustered high probability areas. """
         BayesGrid.Grid = self.initializeGrid(size)
-        #self.increase_probability_by_gps([0.000021918283978328166,0])
-        #self.increase_probability_by_gps([0.003, 0.002])
-        #self.increase_probability_by_gps([0.0026853068927250876, -0.00018847169112613604])
-        self.increase_probability_by_gps([0.007343440474028574, 0.0009458342606261818])
-        self.increase_probability_by_gps([0.0010895132618108832, -0.0045924587249556925])
-        self.increase_probability_by_gps([0.008344077476878839, -0.004684041800389897])
+        # Carports Initialization
+        self.increase_probability_by_gps([0.007337288764208231, 0.0015473830508398682], 1.7, 1.05)
+        self.increase_probability_by_gps([0.001707103085516165, -0.005869766014119177], 1.7, 1.05)
+        self.increase_probability_by_gps([-0.002402926784030703, -0.001047871195765598], 1.7, 1.05)
+        self.increase_probability_by_gps([-0.0015313505514602075, 0.006049187682542039], 1.7, 1.05)
+        self.increase_probability_by_gps([0.011144893346539389,  -0.006131833147648338], 1.7, 1.05)
+        self.increase_probability_by_gps([0.0021932249608941075, -0.0001278846902115635], 1.7, 1.05)
+        self.increase_probability_by_gps([0.007851312834416677, 0.0018392658515156617], 1.7, 1.05)
+        self.increase_probability_by_gps([0.01455661592676954,  0.0019834632507821598], 1.7, 1.05)
+        self.increase_probability_by_gps([0.008403830956252432, 0.006796906645284477], 1.7, 1.05)
+        self.increase_probability_by_gps([0.007340351481571565, -0.0033502257372698633], 1.7, 1.05)
+        self.increase_probability_by_gps([0.010209735336566538, -0.0005897140254008573], 1.7, 1.05)
+        self.increase_probability_by_gps([0.012691500383638721, -0.001089385756422136 ], 1.7, 1.05)
+        self.increase_probability_by_gps([0.010495494354787336, -0.00700806045221467 ], 1.7, 1.05)
+        self.increase_probability_by_gps([0.011792556436402072, -0.00415600173999844 ], 1.7, 1.05)
+        self.increase_probability_by_gps([0.004949016020183171, -0.007433635785285069], 1.7, 1.05)
+
+        # Mountain Top Initialization
+        self.increase_probability_by_gps([0.0010092814304778716, -0.004446075549124654], 1.5, 1.05)
+        self.increase_probability_by_gps([0.0015932946023515609,  -0.004492076813530732], 1.5, 1.05)
+        self.increase_probability_by_gps([0.010474998892371638, -0.004958431343914502], 1.5, 1.05)
+        self.increase_probability_by_gps([0.008612349727206259, 0.004774263397260717], 1.5, 1.05)
+        self.increase_probability_by_gps([0.009171705889567066, 0.0036772408494329754], 1.5, 1.05)
+        self.increase_probability_by_gps([0.009551218673258022, 0.0027472863604613745], 1.5, 1.05)
+        self.increase_probability_by_gps([0.00945522117687739, 0.001123052024289728], 1.5, 1.05)
+        self.increase_probability_by_gps([0.008886118369132794, -0.0006319118460406066], 1.5, 1.05)
         return BayesGrid.Grid
 
     def find_max_probability_cell(self, significance_threshold=-1):
