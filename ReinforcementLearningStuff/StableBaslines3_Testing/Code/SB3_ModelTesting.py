@@ -31,7 +31,7 @@ path = "F:/Documents/GitHub/LM01-Drone-SAR/ReinforcementLearningStuff/StableBasl
 model = DQN.load(path + 'best_model.zip')
 # model = PPO.load(path + 'best_model.zip')
 # model = TRPO.load(path + 'best_model.zip')
-runs = 5
+runs = 2
 # Use the model to make predictions
 goal = 0
 for ep in range(runs):

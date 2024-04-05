@@ -33,7 +33,7 @@ class drone_env(gymnasium.Env):
         self.drone = airsim.MultirotorClient() 
         self.drone.confirmConnection()
         
-        self.max_timestep= 600 
+        self.max_timestep= 500 
 
         self.goal_name = "character_2" # this is the target (person) in World environment
 
@@ -124,10 +124,10 @@ class drone_env(gymnasium.Env):
     def setGoals(self):
         distance, _ = self.get_distance()
         self.original_distance = distance
-        sub_distance = distance / 6
+        sub_distance = distance / 9
         print("Distance " + str(distance))
         print("Sub distance " + str(sub_distance))
-        for _ in range(5):
+        for _ in range(8):
             distance -= sub_distance
             self.goals.append(distance)
         self.goals.append(-99)
@@ -230,10 +230,8 @@ class drone_env(gymnasium.Env):
         reward = 0
 
         curr_distance, previous_distance = self.get_distance()
-        # calculate euclidean distance between prev distance from goal and curr distance from goal, 
-        # and subtract it with euclidean distance between previous agent position and current agent position
-        reward += (previous_distance - curr_distance) - np.linalg.norm(self.info["prev_position"]-self.info["position"])
-        # reward += (previous_distance - curr_distance) * 10
+    
+        reward += (previous_distance - curr_distance) * 10
         print("original distance from Goal: " + str(self.original_distance))
         print("current distance from Goal: " + str(curr_distance))
         
@@ -269,7 +267,7 @@ class drone_env(gymnasium.Env):
 
         # check drone altimeter to make sure it's not too close or too high up the environment
         altimeter = self.state["altimeter"][0]
-        if 5.0 <= altimeter <= 20.0:
+        if 5.0 <= altimeter <= 25.0:
             print(f"{altimeter} is within the range.")
             reward += 1
         else:
@@ -278,7 +276,7 @@ class drone_env(gymnasium.Env):
 
         # if self.state["relative_distance"][0] < 7 and self.state["relative_distance"][1] < 7 and self.state["relative_distance"][1] < 7:
         # if -2 <= self.state["relative_distance"][0] <= 2 and -2 <= self.state["relative_distance"][1] <= 2:
-        if curr_distance < 8.0:
+        if curr_distance < 12.0:
         # if self.state["relative_distance"][0] < 2:
             reward += 400
             self.info["goalreached"] = True
@@ -315,7 +313,6 @@ class drone_env(gymnasium.Env):
         # obs = self.getObservation(chosenAction)
         obsAq = self.getObservation(chosenAction)
         obs = obsAq[0]
-
         # reward, done = self.calculateReward(chosenAction)
         reward, terminated = self.calculateReward(chosenAction)
 
@@ -327,14 +324,13 @@ class drone_env(gymnasium.Env):
             if mean2 > mean1:
                 self.state["image"] = self.info["prev_image"]
 
-        info = self.info
+        info = obsAq[1]
 
         # return obs, reward, done, info
         return obs, reward, terminated, False, info
 
     def reset(self, seed=None, options=None):
-        if seed is not None:
-            self.seed(seed)
+        super().reset(seed=seed)
         self.timestep_count = 0
         self.sub_goal = 0
 
@@ -349,6 +345,8 @@ class drone_env(gymnasium.Env):
         self.no_movement = 0
 
         # return self.getObservation(chosenAction=-1), self.info
+        test = self.getObservation(chosenAction=-1)
+    
         return self.getObservation(chosenAction=-1)
     
     def randomiseTarget(self):
