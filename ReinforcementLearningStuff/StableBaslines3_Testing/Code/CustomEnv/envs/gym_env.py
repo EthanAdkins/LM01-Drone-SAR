@@ -9,7 +9,7 @@ from PIL import Image, ImageStat
 from matplotlib import pyplot as plt
 import time
 import random
-from airsim.types import Pose,Quaternionr,Vector3r
+from airsim.types import Pose,Quaternionr,Vector3r, DrivetrainType, YawMode
 import cv2
 import threading
 from threading import Thread
@@ -33,7 +33,7 @@ class drone_env(gymnasium.Env):
         self.drone = airsim.MultirotorClient() 
         self.drone.confirmConnection()
         
-        self.max_timestep= 500 
+        self.max_timestep= 400 
 
         self.goal_name = "character_2" # this is the target (person) in World environment
 
@@ -150,47 +150,111 @@ class drone_env(gymnasium.Env):
     
     # modified doAction which takes into acount the rotation
     def doAction(self, action):
-        quad_offset, rotate = self.getActionChange(action)
+        # quad_offset, rotate = self.getActionChange(action)
         # self.drone.startRecording()
+        quad_vel = self.drone.getMultirotorState().kinematics_estimated.linear_velocity
+        # if action==1 or action==4:
+        #     # face camera left or right then move forward
+        #     self.drone.moveByVelocityAsync(1, quad_offset, 0, duration=1, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            
+        # elif rotate == 0:
+        #     # go forward or backward
+        #     self.drone.moveByVelocityAsync(
+        #         quad_vel.x_val + quad_offset[0],
+        #         quad_vel.y_val + quad_offset[1],
+        #         quad_vel.z_val + quad_offset[2],
+        #         # quad_offset[0],
+        #         # quad_offset[1],
+        #         # quad_offset[2],
+        #         duration=1, drivetrain=DrivetrainType.MaxDegreeOfFreedom, yaw_mode=YawMode(False,0)
+        #     ).join()
+        # else:
+        #     # just do plain rotation with no movement
+        #     self.drone.rotateByYawRateAsync(quad_offset, .5).join()
+        # # self.drone.stopRecording()
+        
+        if action == 0:
+            self.drone.moveByVelocityAsync(1, 0, 0, duration=2, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            var = "forward"
 
-        if rotate == 0:
-            quad_vel = self.drone.getMultirotorState().kinematics_estimated.linear_velocity
-            self.drone.moveByVelocityAsync(
-                quad_vel.x_val + quad_offset[0],
-                quad_vel.y_val + quad_offset[1],
-                quad_vel.z_val + quad_offset[2],
-                # quad_offset[0],
-                # quad_offset[1],
-                # quad_offset[2],
-                0.5,
-            ).join()
+        elif action == 1:
+            # quad_offset = (0, self.step_length, 0)
+            # quad_offset = 2
+            self.drone.moveByVelocityAsync(0, 1, 0, duration=2, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            var = "right"
+
+        elif action == 2:
+            # quad_offset = (0, 0, self.step_length)
+            self.drone.moveByVelocityAsync(0, 0, 1, duration=2, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            var = "down"
+
+        elif action == 3:
+            # quad_offset = (-self.step_length, 0, 0)
+            self.drone.moveByVelocityAsync(-1, 0, 0, duration=2, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            var = "back"
+
+        elif action == 4:
+            # quad_offset = (0, -self.step_length, 0)
+            # quad_offset = -2
+            self.drone.moveByVelocityAsync(0, -1, 0, duration=2, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            var = "left"
+        elif action == 5:
+            # quad_offset = (0, 0, -self.step_length)
+            self.drone.moveByVelocityAsync(0, 0, -1, duration=2, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            var = "up"
+        elif action == 6:
+            # rotate = 1
+            # quad_offset = -90
+            self.drone.rotateByYawRateAsync(-90, .5).join()
+            var = "rotate -90"
+        elif action == 7:
+            # rotate = 1
+            # quad_offset = 90
+            self.drone.rotateByYawRateAsync(90, .5).join()
+            var = "rotate 90"
         else:
-            self.drone.rotateByYawRateAsync(quad_offset, .5).join()
-        # self.drone.stopRecording()
-    
+            # quad_offset = (0, 0, 0)
+            self.drone.moveByVelocityAsync(0, 0, 0, duration=0, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            var = "no action"
+        print(f"{action} = {var}")
+        # gotta let the drone finish movement
+        time.sleep(1)
+
+    # 0 = forward, 1 = right, 2 = down, 3 = back, 4 = left, 5 = up, 8 = no action
     def getActionChange(self, action):
         rotate = 0
         if action == 0:
             quad_offset = (self.step_length, 0, 0)
+            var = "forward"
         elif action == 1:
-            quad_offset = (0, self.step_length, 0)
+            # quad_offset = (0, self.step_length, 0)
+            quad_offset = 2
+            var = "right"
         elif action == 2:
             quad_offset = (0, 0, self.step_length)
+            var = "down"
         elif action == 3:
             quad_offset = (-self.step_length, 0, 0)
+            var = "back"
         elif action == 4:
-            quad_offset = (0, -self.step_length, 0)
+            # quad_offset = (0, -self.step_length, 0)
+            quad_offset = -2
+            var = "left"
         elif action == 5:
             quad_offset = (0, 0, -self.step_length)
+            var = "up"
         elif action == 6:
             rotate = 1
-            quad_offset = -30
+            quad_offset = -90
+            var = "rotate -90"
         elif action == 7:
             rotate = 1
-            quad_offset = 30
+            quad_offset = 90
+            var = "rotate 90"
         else:
             quad_offset = (0, 0, 0)
-        print(action)
+            var = "no action"
+        print(f"{action} = {var}")
         return quad_offset, rotate
 
     
@@ -274,6 +338,7 @@ class drone_env(gymnasium.Env):
             print(f"{altimeter} is out the range.")
             reward -= 0.5
 
+        targetdistance_threshold = 50
         # if self.state["relative_distance"][0] < 7 and self.state["relative_distance"][1] < 7 and self.state["relative_distance"][1] < 7:
         # if -2 <= self.state["relative_distance"][0] <= 2 and -2 <= self.state["relative_distance"][1] <= 2:
         if curr_distance < 12.0:
@@ -291,13 +356,13 @@ class drone_env(gymnasium.Env):
             print("System: Drone collision.")
             reward -= 150
             done = True
-        elif curr_distance >= 200:
+        elif curr_distance >= self.original_distance + targetdistance_threshold:
             print("System: Drone is TOO far from target.")
-            reward -= 100
+            reward -= 50
             done = True
         elif self.timestep_count > self.max_timestep:
             print("System: Time Step Limit Reached.")
-            reward -= 100
+            reward -= 50
             done = True
 
         print("Final reward: "+str(reward))
@@ -311,6 +376,8 @@ class drone_env(gymnasium.Env):
         self.doAction(chosenAction)
         
         # obs = self.getObservation(chosenAction)
+        self.drone.simPause(True)
+
         obsAq = self.getObservation(chosenAction)
         obs = obsAq[0]
         # reward, done = self.calculateReward(chosenAction)
@@ -325,6 +392,7 @@ class drone_env(gymnasium.Env):
                 self.state["image"] = self.info["prev_image"]
 
         info = obsAq[1]
+        self.drone.simPause(False)
 
         # return obs, reward, done, info
         return obs, reward, terminated, False, info
@@ -396,7 +464,7 @@ class drone_env(gymnasium.Env):
         
 
     def getImageObs(self):
-        my_path = "F:/Documents/RLModel_Pics/"
+        # my_path = "F:/Documents/RLModel_Pics/"
         # -- set image request --
         image_request = self.drone.simGetImages([airsim.ImageRequest("front_center", airsim.ImageType.DepthPerspective, True, False), 
                                                     airsim.ImageRequest("front_center", airsim.ImageType.Scene, False, False)])
@@ -428,9 +496,7 @@ class drone_env(gymnasium.Env):
 
     def getObservation(self, chosenAction):
 
-        # self.drone.simPause(True)
         image = self.getImageObs()
-        
         self.info["prev_image"] = self.state["image"] 
         self.state["image"] = image
 
