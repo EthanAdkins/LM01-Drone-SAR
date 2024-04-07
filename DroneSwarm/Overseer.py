@@ -134,7 +134,7 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
     print("Starting Bayes")
     bayes_grid = BayesGrid(GRID_SIZE)
     print("Initial Bayes Grid:\n", BayesGrid.Grid)
-
+    
     # Get wolf cluster
 
     # Reads in coords for drone
@@ -153,6 +153,9 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
     overseerCommunicationPublish = rospy.Publisher(OVERSEER_COMMUNICATION_TOPIC, String, latch=True, queue_size=1)
     global overseerGridUpdatePublish
     overseerGridUpdatePublish = rospy.Publisher(GRID_UPDATED_TOPIC, String, latch=True, queue_size=1)
+    
+    initialJsonGrid = bayes_grid.save_to_string()
+    overseerGridUpdatePublisher(pub=overseerGridUpdatePublish, gridString=initialJsonGrid)
     # Sets client and takes off drone
     client = takeOff(droneName)
     client.moveToZAsync(z=OVERSEER_DRONE_HEIGHT, velocity=8, vehicle_name = droneName).join()
@@ -272,13 +275,13 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
         get_dist = client.getDistanceSensorData("Distance2", droneName).distance
         # print(height_dif)
 
-        if (get_dist < 8):
-            height_dif = min(height_dif, 0)
-            print("OVERSEER GOING TO HIT SOMETHING: ", height_dif)
-            client.moveByVelocityAsync(vector[1]/(7-get_dist), vector[0]/(8-get_dist), height_dif * 2, duration = 1, vehicle_name=droneName)
-        else:
-            client.moveByVelocityAsync(vector[1], vector[0], height_dif, duration = 1, vehicle_name=droneName)
-
+        # if (get_dist < 8):
+        #     height_dif = min(height_dif, -1)
+        #     print("OVERSEER GOING TO HIT SOMETHING: ", get_dist, "  ", height_dif)
+        #     client.moveByVelocityAsync(vector[1] / 2, vector[0] / 2, height_dif * 10, duration = 10, vehicle_name=droneName)
+        # else:
+        #     client.moveByVelocityAsync(vector[1], vector[0], height_dif, duration = 1, vehicle_name=droneName)
+        client.moveByVelocityAsync(vector[1], vector[0], height_dif, duration = 1, vehicle_name=droneName)
         # client.moveByVelocityZAsync(vector[1], vector[0], -10, duration = 1, vehicle_name="TestOverseer")
 
         # If all drones make it to the waypoint, more to next waypoint

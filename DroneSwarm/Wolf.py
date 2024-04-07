@@ -242,13 +242,13 @@ def wolfDroneController(droneName, droneCount, overseerCount):
     max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)  
     probableLocation = max_prob_index
     
-    if ((max_prob_index != None)):
-                BayesGPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
-                WAYPOINT_COORDS.insert(WAYPOINT_INDEX,[BayesGPS[1], BayesGPS[0]])
-                initialProbSearchNum = probSearchNum
-                debugPrint("Inserted Max Prob Waypoint Before Loop: ")
-                debugPrint(max_prob_index)
-                debugPrint(max_prob_value)
+    # if ((max_prob_index != None)):
+    #             BayesGPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
+    #             WAYPOINT_COORDS.insert(WAYPOINT_INDEX,[BayesGPS[1], BayesGPS[0]])
+    #             initialProbSearchNum = probSearchNum
+    #             debugPrint("Inserted Max Prob Waypoint Before Loop: ")
+    #             debugPrint(max_prob_index)
+    #             debugPrint(max_prob_value)
     debugPrint("Starting Search and Rescue loop")
     runtime = time.time()
     while (i < LOOP_NUMBER):
