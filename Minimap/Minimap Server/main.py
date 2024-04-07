@@ -18,7 +18,7 @@ async def main():
     print("Starting server.")
 
     #Get settings path
-    settings_path = 'C:/Users/Admin/Documents/AirSim/settings.json'  # Update this path as needed
+    settings_path = 'C:/Users/Ethan/OneDrive/Documents/AirSim/settings.json'  # Update this path as needed
 
     #Load settings to json
     with open(settings_path) as f:

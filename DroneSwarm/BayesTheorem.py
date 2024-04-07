@@ -50,7 +50,8 @@ class BayesGrid:
         BayesGrid.Grid = self.initializeGrid(size)
         # Carports Initialization
         self.increase_probability_by_gps([0.007337288764208231, 0.0015473830508398682], 1.7, 1.05)
-        self.increase_probability_by_gps([0.001707103085516165, -0.005869766014119177], 1.7, 1.05)
+        #        self.increase_probability_by_gps([0.001707103085516165, -0.005869766014119177], 1.7, 1.05)
+        self.increase_probability_by_gps([0.001707103085516165, -0.005769766014119177], 1.7, 1.05)
         self.increase_probability_by_gps([-0.002402926784030703, -0.001047871195765598], 1.7, 1.05)
         self.increase_probability_by_gps([-0.0015313505514602075, 0.006049187682542039], 1.7, 1.05)
         self.increase_probability_by_gps([0.011144893346539389,  -0.006131833147648338], 1.7, 1.05)
@@ -62,7 +63,7 @@ class BayesGrid:
         self.increase_probability_by_gps([0.010209735336566538, -0.0005897140254008573], 1.7, 1.05)
         self.increase_probability_by_gps([0.012691500383638721, -0.001089385756422136 ], 1.7, 1.05)
         self.increase_probability_by_gps([0.010495494354787336, -0.00700806045221467 ], 1.7, 1.05)
-        self.increase_probability_by_gps([0.011792556436402072, -0.00415600173999844 ], 1.7, 1.05)
+        #self.increase_probability_by_gps([0.011792556436402072, -0.00415600173999844 ], 1.6, 1.05)
         self.increase_probability_by_gps([0.004949016020183171, -0.007433635785285069], 1.7, 1.05)
 
         # Mountain Top Initialization
