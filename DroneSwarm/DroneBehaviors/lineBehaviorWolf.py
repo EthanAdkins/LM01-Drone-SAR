@@ -126,8 +126,14 @@ def subWaypointCalculator(currentWaypoint, previousWaypoint, radius, droneName, 
 
     # Gets normalized difference vector
     vectorVal = sqrt(waypointDiffX**2 + waypointDiffY**2)
-    xDirection = (waypointDiffX/vectorVal) * radius
-    yDirection = (waypointDiffY/vectorVal) * radius
+
+    # Check if vectorVal is 0 to avoid dividing by 0
+    if vectorVal == 0:
+        xDirection = 0
+        yDirection = 0
+    else:
+        xDirection = (waypointDiffX/vectorVal) * radius
+        yDirection = (waypointDiffY/vectorVal) * radius
 
     # Calculates horizontal and vertical changes
     horizonalChange = xDirection - yDirection
@@ -181,8 +187,14 @@ def getSubwaypointList(currentWaypoint, previousWaypoint, radius, droneCluster):
 
     # Gets normalized difference vector
     vectorVal = sqrt(waypointDiffX**2 + waypointDiffY**2)
-    xDirection = (waypointDiffX/vectorVal) * radius
-    yDirection = (waypointDiffY/vectorVal) * radius
+    
+    # Check if vectorVal is 0 to avoid dividing by 0
+    if vectorVal == 0:
+        xDirection = 0
+        yDirection = 0
+    else:
+        xDirection = (waypointDiffX/vectorVal) * radius
+        yDirection = (waypointDiffY/vectorVal) * radius
 
     # Calculates horizontal and vertical changes
     horizonalChange = xDirection - yDirection
@@ -281,7 +293,10 @@ def allDronesAtWaypoint(wolfCommPublish, client, WAYPOINT_INDEX, Cluster, WAYPOI
             # If any of the drones are out of bounds, return false
             if ((abs(xDifference) > 0.0004) or (abs(yDifference) > 0.0004)):
                 return False, WAYPOINT_INDEX
-
+            # I added this, may wanna experiment. It prevents the drones from moving when a drone is doing a scan at a location. Most important for the Bayes Theorem part (most prob point)
+            # if(wolf.taskGroup != ''):
+            #     print("DRONE IS SEARCHING, NOT AT WAYPOINT (LineBehavior)")
+            #     return False, WAYPOINT_INDEX
         # Check if our global value has changed
         if (waypointIndexBeforeCheck == WAYPOINT_INDEX):    
             WAYPOINT_INDEX = WAYPOINT_INDEX + 1

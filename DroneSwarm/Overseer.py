@@ -30,6 +30,7 @@ from ServiceRequestors.overseerGetWolfData import getOverseerGetWolfState
 from airsim_ros_pkgs.msg import droneData
 from airsim_ros_pkgs.msg import wolfCommunication
 from airsim_ros_pkgs.msg import updateMap
+from airsim_ros_pkgs.msg import requestGridUpdate
 from ServiceRequestors.wolfGetWolfData import getWolfState
 import ServiceRequestors.overseerGetWolfData as overseerGetWolfData 
 import ServiceRequestors.instructWolf as instructWolf
@@ -47,7 +48,7 @@ from HelperFunctions import calcHelper
 import ServiceRequestors.checkGPU as checkGPU
 import warnings
 import os
-
+from BayesTheorem import BayesGrid 
 
 # for a clearner output
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -61,13 +62,16 @@ MIN_CIRCLE_RADIUS_METERS = configDrones.MIN_CIRCLE_RADIUS_METERS
 DISTANCE_LEAD_OVERSEER_GPS = configDrones.DISTANCE_LEAD_OVERSEER_GPS
 MIN_CIRCLE_PADDING_FOR_SEARCH_HISTORY = configDrones.MIN_CIRCLE_PADDING_FOR_SEARCH_HISTORY
 MAX_WAYPOINT_SAVE_TIME = configDrones.MAX_WAYPOINT_SAVE_TIME
-
+GRID_SIZE = configDrones.GRID_SIZE
+SIGNIFICANCE_THRESHOLD = configDrones.SIGNIFICANCE_THRESHOLD
+OVERSEER_DRONE_HEIGHT = configDrones.OVERSEER_DRONE_HEIGHT
 # ros: topics
 OVERSEER_DATA_TOPIC = ros.OVERSEER_DATA_TOPIC
 OVERSEER_COMMUNICATION_TOPIC = ros.OVERSEER_COMMUNICATION_TOPIC
 COMMAND_TOPIC = ros.COMMAND_TOPIC
 COMMAND_RESULT_TOPIC = ros.COMMAND_RESULT_TOPIC
 MAP_HANDLER_TOPIC = ros.MAP_HANDLER_TOPIC
+GRID_UPDATED_TOPIC = ros.GRID_UPDATED_TOPIC
 
 # ros: services
 PROXIMITY_OVERSEER_SERVICE = ros.PROXIMITY_OVERSEER_SERVICE
@@ -90,14 +94,30 @@ GROUP_1_SEARCH = 'Constants/Group1Spiral.txt'
 Cluster = EMPTY_CLUSTER
 End_Loop = False
 Waypoint_History = []
+global bayes_grid
+global probSearchNum
+global initialProbSearchNum
+global max_prob_index
+global max_prob_value
+probSearchNum = 0
+initialProbSearchNum = -1
+global overseerGridUpdatePublish
+global probableLocation
 
 # Main Process Start ----------------------------------------------
 # Main function for the overseer drone
 def overseerDroneController(droneName, overseerCount, wolfCount):
     global DM_Drone_Name
     global Cluster
+    global bayes_grid 
+    global probSearchNum
+    global initialProbSearchNum
+    global max_prob_index
+    global max_prob_value
+    global probableLocation
     DM_Drone_Name = droneName
     Cluster = droneName
+    probableLocation = None
     # use this code to make print calls allowing you to know what process made the print statemnt
     debugPrint("Process started")
     droneNum = ''.join(filter(lambda i: i.isdigit(), droneName)) # Get overseer number from droneName
@@ -110,6 +130,11 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
     checkGPU.checkGPUStatus()
     debugPrint("GPU Loaded")
 
+    # Start the initial Bayes Theorem probability grid
+    print("Starting Bayes")
+    bayes_grid = BayesGrid(GRID_SIZE)
+    print("Initial Bayes Grid:\n", BayesGrid.Grid)
+    
     # Get wolf cluster
 
     # Reads in coords for drone
@@ -126,10 +151,14 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
     # (TODO: ADD IN COMMAND RESULT PUBLISHERS)
     overseerDataPublish = rospy.Publisher(OVERSEER_DATA_TOPIC, droneData, latch=True, queue_size=1)
     overseerCommunicationPublish = rospy.Publisher(OVERSEER_COMMUNICATION_TOPIC, String, latch=True, queue_size=1)
-
+    global overseerGridUpdatePublish
+    overseerGridUpdatePublish = rospy.Publisher(GRID_UPDATED_TOPIC, String, latch=True, queue_size=1)
+    
+    initialJsonGrid = bayes_grid.save_to_string()
+    overseerGridUpdatePublisher(pub=overseerGridUpdatePublish, gridString=initialJsonGrid)
     # Sets client and takes off drone
     client = takeOff(droneName)
-    client.moveToZAsync(z=-40, velocity=8, vehicle_name = droneName).join()
+    client.moveToZAsync(z=OVERSEER_DRONE_HEIGHT, velocity=8, vehicle_name = droneName).join()
 
     # client = takeOff("TestOverseer")
     # client.moveToZAsync(z=-10, velocity=8, vehicle_name = "TestOverseer").join()
@@ -146,7 +175,7 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
         reminder = wolfCount % overseerCount
         if reminder != 0:
             clusterSize = clusterSize + reminder
-    debugPrint(str(clusterSize))
+    #debugPrint(str(clusterSize))
     for num in range(clusterSize):
         wolfNum = num + groupStartDroneNum
         wolfDroneService = WOLF_DRONE_SERVICE + str(wolfNum)
@@ -157,6 +186,17 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
     debugPrint("Starting Search and Rescue loop")
     timeSpent = 0
     runtime = time.time() # USED FOR TESTING
+    max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)
+    probableLocation = max_prob_index
+    if (max_prob_index != None):
+        # There is a significant probable location
+        GPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
+        WAYPOINT_COORDS.insert(WAYPOINT_INDEX,[GPS[1], GPS[0]])
+        debugPrint("Inserted Max Prob Waypoint at Index: ")
+        debugPrint(WAYPOINT_INDEX)
+        debugPrint(max_prob_index)
+        debugPrint(max_prob_value)
+
     while (i < LOOP_NUMBER):
         if (End_Loop):
             print(droneName, "Ending loop")
@@ -178,8 +218,24 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
         # TODO: Update assigned wolf drones on search area
 
         # Gets waypoint and calculates movement vector to next waypoint
+
+        # if ((max_prob_index != None) and (initialProbSearchNum != probSearchNum)):
+        #     # There is a significant probable location
+        #     GPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
+        #     WAYPOINT_COORDS.insert(0,[GPS[1], GPS[0]])
+        #     initialProbSearchNum = probSearchNum
+        #     debugPrint("Inserted Max Prob Waypoint: ")
+        #     debugPrint(max_prob_index)
+        #     debugPrint(max_prob_value)
+        #     #endWaypoint = [GPS[1], GPS[0]]
+        #     #startWaypoint = getLastWaypoint(droneName)
+        #     #print("GPS Location: ", GPS)
+        #     # if (allDronesAtWaypointCheck(droneName)):
+        #     #     print("Manual Search at: ", GPS)
+        #     # startSearchAtCoordinates(droneName, GPS[0], GPS[1]) # Adjust this to only be done when at the waypoint for the drones.
         endWaypoint = getNewWaypoint(droneName)
         startWaypoint = getLastWaypoint(droneName)
+
         startGPS = calcHelper.fixDegenerateCoordinate(startWaypoint)
         endGPS = calcHelper.fixDegenerateCoordinate(endWaypoint)
         # debugPrint("Start Longitude: " + str(startGPS.longitude) + "Start Latitude: " + str(startGPS.latitude) + "End Longitude: "+ str(endGPS.longitude) + "End Latitude: " + str(endGPS.latitude))
@@ -214,14 +270,32 @@ def overseerDroneController(droneName, overseerCount, wolfCount):
         outputForWaypoint = "Waypoint to move to: " + str(waypoint) + " END GPS: " + str(endGPS)
         # debugPrint(outputForWaypoint)
         vector = lineBehaviorOverseer.overseerWaypoint(client, int(droneNum), waypoint, endWaypoint)
+        get_alt = -(client.getDistanceSensorData("Distance", droneName).distance)
+        height_dif = OVERSEER_DRONE_HEIGHT - get_alt
+        get_dist = client.getDistanceSensorData("Distance2", droneName).distance
+        # print(height_dif)
 
-        client.moveByVelocityZAsync(vector[1], vector[0], -40, duration = 1, vehicle_name=droneName)
-
+        # if (get_dist < 8):
+        #     height_dif = min(height_dif, -1)
+        #     print("OVERSEER GOING TO HIT SOMETHING: ", get_dist, "  ", height_dif)
+        #     client.moveByVelocityAsync(vector[1] / 2, vector[0] / 2, height_dif * 10, duration = 10, vehicle_name=droneName)
+        # else:
+        #     client.moveByVelocityAsync(vector[1], vector[0], height_dif, duration = 1, vehicle_name=droneName)
+        client.moveByVelocityAsync(vector[1], vector[0], height_dif, duration = 1, vehicle_name=droneName)
         # client.moveByVelocityZAsync(vector[1], vector[0], -10, duration = 1, vehicle_name="TestOverseer")
 
         # If all drones make it to the waypoint, more to next waypoint
-        allDronesAtWaypoint(droneName)
+        #allAtWaypoint = allDronesAtWaypointCheck(droneName)
+        if (allDronesAtWaypoint(droneName) and (max_prob_index != None)):
+            GPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
+            if (WAYPOINT_COORDS[WAYPOINT_INDEX - 1][0] == GPS[1] and WAYPOINT_COORDS[WAYPOINT_INDEX - 1][1] == GPS[0]):
+                print("Manual Search at: ", GPS)
+                startSearchAtCoordinates(droneName, GPS[0], GPS[1])
+            else:
+                print(WAYPOINT_COORDS[WAYPOINT_INDEX - 1], " and ", GPS, " do not match")
+                print("Waypoint index: ", WAYPOINT_INDEX)
 
+        # allDronesAtWaypoint(droneName)
         # TODO: Add in Overseer behavior
         # TODO: Creeping Line lead behavior
             # Overseer will slighly go ahead its drone cluster to search for waypoints
@@ -248,7 +322,37 @@ def overseerCommunicationSubscriber():
     rospy.Subscriber(OVERSEER_COMMUNICATION_TOPIC, String, handleOverseerCommunication, ())
     rospy.Subscriber(ros.END_LOOP_TOPIC, String, handleEnd)
     rospy.Subscriber(ros.WOLF_COMMUNICATION_TOPIC, wolfCommunication, handleWolfCommunication)
+    rospy.Subscriber(ros.REQUEST_GRID_UPDATE_TOPIC, requestGridUpdate, handleRequestGridUpdate)
     rospy.spin()
+
+def handleRequestGridUpdate(data):
+    global bayes_grid
+    global overseerGridUpdatePublish
+    global max_prob_index
+    global max_prob_value
+    global probableLocation
+    searchOperationID = data.searchOperationID
+    longitude = data.longitude
+    latitude = data.latitude
+    print("Latitude: ", latitude, "Longitude: ", longitude)
+    result, gridString = bayes_grid.apply_evidence_to_cell((latitude, longitude), searchOperationID)
+    if(result):
+        print("WolfUpdated: ", bayes_grid.Grid)
+        # Update Grid Here
+        max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)
+        if ((max_prob_index != None) and max_prob_index != probableLocation):
+            probableLocation = max_prob_index
+            # There is a significant probable location
+            GPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
+            WAYPOINT_COORDS.insert(WAYPOINT_INDEX,[GPS[1], GPS[0]])
+            debugPrint("Inserted Overseer Max Prob Waypoint at Index: ")
+            debugPrint(WAYPOINT_INDEX)
+            debugPrint(max_prob_index)
+            debugPrint(max_prob_value)
+        overseerGridUpdatePublisher(pub=overseerGridUpdatePublish, gridString=gridString)
+        
+    else:
+        print("GridUpdateFailed")
 
 def handleWolfCommunication(data):
     # Grabs strings from data object
@@ -258,6 +362,9 @@ def handleWolfCommunication(data):
     command = data.command
     spiralIndex = data.genericInt
     global WAYPOINT_INDEX
+    global max_prob_index
+    global max_prob_value
+    global probableLocation
     #debugPrint("overseer listend to wolf comm")
     # Check if we got at spiral waypoint signal
     if ((command == AT_SPIRAL_WAYPOINT_SIGNAL) and (cluster == DM_Drone_Name)):
@@ -266,7 +373,22 @@ def handleWolfCommunication(data):
         # debugPrint(text)
         if(WAYPOINT_INDEX < spiralIndex):
             # text = "Current index out of data, setting to recieved waypoint: " + str(spiralIndex)
-            # debugPrint("Current index out of data, setting to recieved waypoint")
+            # max_prob_index, max_prob_value = bayes_grid.find_max_probability_cell(significance_threshold=SIGNIFICANCE_THRESHOLD)
+            # GPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
+            # if (max_prob_index != None and not (WAYPOINT_COORDS[WAYPOINT_INDEX][0] == GPS[1] and WAYPOINT_COORDS[WAYPOINT_INDEX][1] == GPS[0])):
+            #     # There is a significant probable location
+               
+            #     WAYPOINT_COORDS.insert(WAYPOINT_INDEX,[GPS[1], GPS[0]])
+            #     debugPrint("Out of Data Inserted Max Prob Waypoint: ")
+            #     debugPrint(max_prob_index)
+            #     debugPrint(max_prob_value)
+            # else:
+            debugPrint("Current index out of data, setting to recieved waypoint")
+            debugPrint(spiralIndex)
+            GPS = bayes_grid.centerGrid_to_GPS(max_prob_index)
+            if (max_prob_index != None and (WAYPOINT_COORDS[WAYPOINT_INDEX][0] == GPS[1] and WAYPOINT_COORDS[WAYPOINT_INDEX][1] == GPS[0])):
+                print("Manual Search at: ", GPS)
+                startSearchAtCoordinates(DM_Drone_Name, GPS[0], GPS[1])
             WAYPOINT_INDEX = spiralIndex
 
 def overseerInfraredDetection(droneName):
@@ -453,6 +575,10 @@ def updateDroneData(pub, client):
     stateData = "True" # Temporary state data for testing
     pub.publish(jsonLocation)
 
+# Publishes data to the GRID_UPDATED_TOPIC
+def overseerGridUpdatePublisher(pub, gridString):
+    pub.publish(gridString)
+
 # Enables api control, takes off drone, returns the client
 def takeOff(droneName):
     client = airsim.MultirotorClient(LOCAL_IP)
@@ -503,6 +629,42 @@ def readCoordFile(filename):
 
 def allDronesAtWaypoint(overseerName):
     global WAYPOINT_INDEX
+    global max_prob_index
+    global max_prob_value
+    global probableLocation
+    wolfClusterInfo = overseerGetWolfData.getWolfDataOfCluster(overseerName)
+    droneNum = 0
+    if (not wolfClusterInfo):
+        # The cluster is empty
+        return 0
+    if (len(wolfClusterInfo) < 4):
+        # print("Not all drones")
+        return 0
+    for drone in wolfClusterInfo:
+        xDifference = drone.longitude - float(WAYPOINT_COORDS[WAYPOINT_INDEX][0])
+        yDifference = drone.latitude - float(WAYPOINT_COORDS[WAYPOINT_INDEX][1])
+
+        # If any of the drones are out of bounds, return false
+        if ((abs(xDifference) > 0.0003) or (abs(yDifference) > 0.0003)):
+            #print(droneNum, "X difference:", xDifference, "Y Difference:", yDifference)
+            #print("Drones still heading to waypoint: ", WAYPOINT_COORDS[WAYPOINT_INDEX])
+            return 0
+        if(drone.taskGroup != ''):
+            #print("DRONE IS SEARCHING NOT AT WAYPOINT")
+            return 0
+        droneNum += 1
+
+    WAYPOINT_INDEX = WAYPOINT_INDEX + 1
+    print("Drones:", len(wolfClusterInfo), "Made it to waypoint:", WAYPOINT_INDEX - 1)
+
+    # The not(wolfClusterInfo) is to insure that the wolfCluster is not empty
+    if (WAYPOINT_INDEX != 0 and wolfClusterInfo):
+        print(WAYPOINT_COORDS[WAYPOINT_INDEX-1], "  Long:", wolfClusterInfo[0].longitude, " Lat", wolfClusterInfo[0].latitude)
+    return 1
+
+def allDronesAtWaypointCheck(overseerName):
+    # This checks, doesn't adjust waypoints
+    global WAYPOINT_INDEX
     wolfClusterInfo = overseerGetWolfData.getWolfDataOfCluster(overseerName)
     for drone in wolfClusterInfo:
         xDifference = drone.longitude - float(WAYPOINT_COORDS[WAYPOINT_INDEX][0])
@@ -511,8 +673,54 @@ def allDronesAtWaypoint(overseerName):
         # If any of the drones are out of bounds, return false
         if ((abs(xDifference) > 0.0003) or (abs(yDifference) > 0.0003)):
             # print(droneNum, "X difference:", xDifference, "Y Difference:", yDifference)
+            #print("Drones still heading to waypoint: ", WAYPOINT_COORDS[WAYPOINT_INDEX])
             return 0
-
-    WAYPOINT_INDEX = WAYPOINT_INDEX + 1
-    # print("Drones:", DM_Wolfs_Cluster, "Made it to waypoint:", WAYPOINT_INDEX)
+    print("Drones:", len(wolfClusterInfo), "Made it to waypoint:", WAYPOINT_INDEX)
     return 1
+
+def startSearchAtCoordinates(droneName, targetLat, targetLon):
+    global Cluster
+    threadClient = airsim.MultirotorClient(LOCAL_IP)
+
+    # Convert the target coordinates into the expected format for the search
+    targetGPS = [targetLon, targetLat]  # Assuming [longitude, latitude] format
+
+
+    # Generate a search circle around the provided GPS coordinate
+    radius = MIN_CIRCLE_RADIUS_GPS
+    circle = clustering.circle(radius, targetGPS, [targetGPS])
+    circleList = [circle]  # Assuming there's only one target location
+    
+    wolfDataList = overseerGetWolfData.getWolfDataOfCluster(Cluster)
+    cleanWaypointHistory(wolfDataList)
+    waypoint = circle.avgCenter
+    radius = circle.radius
+    
+    currentGPS = threadClient.getGpsData(gps_name="", vehicle_name=droneName).gnss.geo_point
+
+    optimalDroneName = algoHelper.getOptimalWolf(waypoint, wolfDataList, droneName)
+    if optimalDroneName != "":
+        taskGroup = SEARCH_TASK_GROUP + optimalDroneName
+        updateWayPointHistory(waypoint, taskGroup, radius)
+        
+        gpsDataObject = GPS()
+        gpsDataObject.longitude = waypoint[0]
+        gpsDataObject.latitude = waypoint[1]
+        
+        circleRadiusMeters = (radius * MIN_CIRCLE_RADIUS_METERS) / MIN_CIRCLE_RADIUS_GPS
+        searchTimeS = (radius * 15) / MIN_CIRCLE_RADIUS_GPS
+        taskGroup = EMPTY_CLUSTER  # Indicating task initiation by the overseer
+        requestStatus = instructWolf.sendWolfSearchBehaviorRequest(
+            WOLF_DRONE_SERVICE + str(optimalDroneName),
+            gpsDataObject,
+            radius,
+            circleRadiusMeters,
+            30,  # Assuming spreadTimeS is constant
+            searchTimeS,
+            taskGroup,
+            True
+        )
+        print("Manual Request bool:", requestStatus, "From Overseer:", droneName, "To:", optimalDroneName)
+    else:
+        print("No optimal drone found for the waypoint:", waypoint)
+        return
