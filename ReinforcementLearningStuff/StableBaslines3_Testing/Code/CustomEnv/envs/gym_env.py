@@ -9,7 +9,7 @@ from PIL import Image, ImageStat
 from matplotlib import pyplot as plt
 import time
 import random
-from airsim.types import Pose,Quaternionr,Vector3r
+from airsim.types import Pose,Quaternionr,Vector3r, DrivetrainType, YawMode
 import cv2
 import threading
 from threading import Thread
@@ -33,15 +33,11 @@ class drone_env(gymnasium.Env):
         self.drone = airsim.MultirotorClient() 
         self.drone.confirmConnection()
         
-        self.max_timestep= 500 
+        self.max_timestep= 400 
 
-        # self.goal_name = "Goal"
-        # self.goal_name = "Goal_8"
-        self.goal_name = "Character_1" # this is the target (person) in World environment
+        self.goal_name = "character_2" # this is the target (person) in World environment
 
-        # self.goal_position = np.array([50.0, 0.0, -2.8], dtype=np.float64) #Unreal object in cm 53
         goal_pos = self.drone.simGetObjectPose(self.goal_name).position
-        # # print(goal_pos.x_val)
         self.goal_position = np.array([goal_pos.x_val, goal_pos.y_val, goal_pos.z_val], dtype=np.float64) #Unreal object in cm 53
 
         self.step_length = 1
@@ -51,21 +47,31 @@ class drone_env(gymnasium.Env):
         self.start_time = 0
         self.timestep_count = 0
 
+        # counter for idle movements
+        self.no_movement = 0
+
+        # these are 6 pre-determined locations to be used for placing the target randomly
+        self.target_locations = np.array([[-132.19700622558594, -53.86787796020508, 22.765165328979492],
+                            [68.42804718017578, -99.58522033691406, 1.0497558116912842],
+                            [93.12804412841797, 75.0147705078125, -47.45024490356445],
+                            [-111.7719497680664, 92.11477661132812, -29.95024299621582],
+                            [-10.971952438354492, 113.81477355957031, -45.95024490356445],
+                            [-8.071952819824219, -93.08522033691406, 15.249755859375]], dtype=np.float64)
+
 
         # print(self.drone.simListSceneObjects())
         print(self.drone.simGetObjectPose(self.goal_name).position)
-        
 
         self.goals = []
         self.sub_goal = 0
-        self.VertPos = []
-        self.HorzPos = []
+        # code that is commented out is used for the previous environment with the gates
+        # self.VertPos = []
+        # self.HorzPos = []
         self.heading = Quaternionr(0, 0, 0, 0)
-
 
         # -- set the Observation Space --
         self.observation_space = spaces.Dict({
-            "image": spaces.Box(0, 255, shape=(self.img_height, self.img_width, 1), dtype=np.uint8),
+            "image": spaces.Box(0, 255, shape=(self.img_height, self.img_width, 4), dtype=np.float64),
             "velocity": spaces.Box(low=np.array([-np.inf for _ in range(3)]), 
                                     high=np.array([np.inf for _ in range(3)]),
                                     dtype=np.float64),
@@ -77,38 +83,32 @@ class drone_env(gymnasium.Env):
                                             dtype=np.float64),
             "action_history": spaces.Box(low=np.array([-1 for _ in range(10)]), 
                                     high=np.array([5 for _ in range(10)]),
-                                    dtype=np.int8)
+                                    dtype=np.int8),
+            "altimeter": spaces.Box(low=np.array([-np.inf for _ in range(1)]), 
+                                            high=np.array([np.inf for _ in range(1)]),
+                                            dtype=np.float64),
             })
 
         # -- set internally state and info --
 
         self.state = {
-            "image": np.zeros([self.img_height , self.img_width, 1], dtype=np.uint8),
+            "image": np.zeros([self.img_height , self.img_width, 4], dtype=np.float64),
             "velocity": np.zeros(3),
             "prev_relative_distance": np.zeros(3),
             "relative_distance": np.zeros(3),
-            "action_history": -1 * np.ones(10, dtype=np.int8)
+            "action_history": -1 * np.ones(10, dtype=np.int8),
+            "altimeter": np.zeros(1)
         }
 
         self.info = {
-            "prev_image": np.zeros([self.img_height , self.img_width, 1], dtype=np.uint8),
+            "prev_image": np.zeros([self.img_height , self.img_width, 4], dtype=np.float64),
             "collision": False,
             "position": np.zeros(3),
             "prev_position": np.zeros(3),
             "goal_position": self.goal_position,
-            "goalreached": False
+            "goalreached": False,
         }
 
-        """
-        Create the discrete action space:
-F
-        1 - Move Right
-        2 - Move Down
-        3 - Move Back
-        4 - Move Left
-        5 - Move Up
-        6 - Do Nothing
-        """
         # self.action_space = spaces.Discrete(6)
         self.action_space = spaces.Discrete(9) # add rotation 
 
@@ -116,35 +116,18 @@ F
         # position = Vector3r(self.goal_position[0], self.goal_position[1], self.goal_position[2])
         # pose = Pose(position, self.heading)
         # self.drone.simSetObjectPose(self.goal_name, pose, True)
-
+        self.original_distance = 0
         self.setGoals()
         
-        self.getParentObjPos()
+        # self.getParentObjPos()
 
-        # -- set image request --
-        self.image_request = airsim.ImageRequest(
-            "0", airsim.ImageType.DepthPerspective, True, False
-        )   
-   
-    
-    def getParentObjPos(self):
-        VertNames = ["ParentVerticalFirstRow", "ParentVerticalSecondRow", "ParentVerticalThirdRow", "ParentVerticalFourthRow"]
-        HorizNames = ["ParentHorizontalFirstRow", "ParentHorizontalSecondRow", "ParentHorizontalThirdRow", "ParentHorizontalFourthRow"]
-
-        for x in range(len(VertNames)): #Assuming same size
-            posV = self.drone.simGetObjectPose(VertNames[x])
-            self.VertPos.append([posV, VertNames[x]])
-
-            posH = self.drone.simGetObjectPose(HorizNames[x])
-            self.HorzPos.append([posH, HorizNames[x]])
-        self.orien = posH.orientation
-        
     def setGoals(self):
         distance, _ = self.get_distance()
-        sub_distance = distance / 4
+        self.original_distance = distance
+        sub_distance = distance / 9
         print("Distance " + str(distance))
         print("Sub distance " + str(sub_distance))
-        for _ in range(3):
+        for _ in range(8):
             distance -= sub_distance
             self.goals.append(distance)
         self.goals.append(-99)
@@ -154,68 +137,124 @@ F
     #     quad_offset = self.getActionChange(action)
         
     #     self.drone.startRecording()
-    #     self.drone.moveByVelocityAsync(quad_offset[0],
-    #                                    quad_offset[1],
-    #                                    quad_offset[2],
-    #                                    TIME).join()
+    #     quad_vel = self.drone.getMultirotorState().kinematics_estimated.linear_velocity
+    #     self.drone.moveByVelocityAsync(
+    #         quad_vel.x_val + quad_offset[0],
+    #         quad_vel.y_val + quad_offset[1],
+    #         quad_vel.z_val + quad_offset[2],
+    #         0.5,
+    #     ).join()
     #     self.drone.stopRecording()
 
     #     return
     
-    '''modified doAction'''
+    # modified doAction which takes into acount the rotation
     def doAction(self, action):
-        quad_offset, rotate = self.getActionChange(action)
-        self.drone.startRecording()
-
-        if rotate == 0:
-            quad_vel = self.drone.getMultirotorState().kinematics_estimated.linear_velocity
-            self.drone.moveByVelocityAsync(
-                quad_vel.x_val + quad_offset[0],
-                quad_vel.y_val + quad_offset[1],
-                quad_vel.z_val + quad_offset[2],
-                TIME,
-            ).join()
-        else:
-            self.drone.rotateByYawRateAsync(quad_offset, .5).join()
-        self.drone.stopRecording()
-    
-    def getActionChange(self, action):
-        # if action == 0:
-        #     quad_offset = (self.step_length, 0, 0)
-        # elif action == 1:
-        #     quad_offset = (0, self.step_length, 0)
-        # elif action == 2:
-        #     quad_offset = (0, 0, self.step_length)
-        # elif action == 3:
-        #     quad_offset = (-self.step_length, 0, 0)
-        # elif action == 4:
-        #     quad_offset = (0, -self.step_length, 0)
-        # elif action == 5:
-        #     quad_offset = (0, 0, -self.step_length)
+        # quad_offset, rotate = self.getActionChange(action)
+        # self.drone.startRecording()
+        quad_vel = self.drone.getMultirotorState().kinematics_estimated.linear_velocity
+        # if action==1 or action==4:
+        #     # face camera left or right then move forward
+        #     self.drone.moveByVelocityAsync(1, quad_offset, 0, duration=1, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            
+        # elif rotate == 0:
+        #     # go forward or backward
+        #     self.drone.moveByVelocityAsync(
+        #         quad_vel.x_val + quad_offset[0],
+        #         quad_vel.y_val + quad_offset[1],
+        #         quad_vel.z_val + quad_offset[2],
+        #         # quad_offset[0],
+        #         # quad_offset[1],
+        #         # quad_offset[2],
+        #         duration=1, drivetrain=DrivetrainType.MaxDegreeOfFreedom, yaw_mode=YawMode(False,0)
+        #     ).join()
         # else:
-        #     quad_offset = (0, 0, 0)
+        #     # just do plain rotation with no movement
+        #     self.drone.rotateByYawRateAsync(quad_offset, .5).join()
+        # # self.drone.stopRecording()
+        
+        if action == 0:
+            self.drone.moveByVelocityAsync(1, 0, 0, duration=2, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            var = "forward"
+
+        elif action == 1:
+            # quad_offset = (0, self.step_length, 0)
+            # quad_offset = 2
+            self.drone.moveByVelocityAsync(0, 1, 0, duration=2, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            var = "right"
+
+        elif action == 2:
+            # quad_offset = (0, 0, self.step_length)
+            self.drone.moveByVelocityAsync(0, 0, 1, duration=2, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            var = "down"
+
+        elif action == 3:
+            # quad_offset = (-self.step_length, 0, 0)
+            self.drone.moveByVelocityAsync(-1, 0, 0, duration=2, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            var = "back"
+
+        elif action == 4:
+            # quad_offset = (0, -self.step_length, 0)
+            # quad_offset = -2
+            self.drone.moveByVelocityAsync(0, -1, 0, duration=2, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            var = "left"
+        elif action == 5:
+            # quad_offset = (0, 0, -self.step_length)
+            self.drone.moveByVelocityAsync(0, 0, -1, duration=2, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            var = "up"
+        elif action == 6:
+            # rotate = 1
+            # quad_offset = -90
+            self.drone.rotateByYawRateAsync(-90, .5).join()
+            var = "rotate -90"
+        elif action == 7:
+            # rotate = 1
+            # quad_offset = 90
+            self.drone.rotateByYawRateAsync(90, .5).join()
+            var = "rotate 90"
+        else:
+            # quad_offset = (0, 0, 0)
+            self.drone.moveByVelocityAsync(0, 0, 0, duration=0, drivetrain=DrivetrainType.ForwardOnly, yaw_mode=YawMode(False,0))
+            var = "no action"
+        print(f"{action} = {var}")
+        # gotta let the drone finish movement
+        time.sleep(1)
+
+    # 0 = forward, 1 = right, 2 = down, 3 = back, 4 = left, 5 = up, 8 = no action
+    def getActionChange(self, action):
         rotate = 0
         if action == 0:
             quad_offset = (self.step_length, 0, 0)
+            var = "forward"
         elif action == 1:
-            quad_offset = (0, self.step_length, 0)
+            # quad_offset = (0, self.step_length, 0)
+            quad_offset = 2
+            var = "right"
         elif action == 2:
             quad_offset = (0, 0, self.step_length)
+            var = "down"
         elif action == 3:
             quad_offset = (-self.step_length, 0, 0)
+            var = "back"
         elif action == 4:
-            quad_offset = (0, -self.step_length, 0)
+            # quad_offset = (0, -self.step_length, 0)
+            quad_offset = -2
+            var = "left"
         elif action == 5:
             quad_offset = (0, 0, -self.step_length)
+            var = "up"
         elif action == 6:
             rotate = 1
-            quad_offset = -30
+            quad_offset = -90
+            var = "rotate -90"
         elif action == 7:
             rotate = 1
-            quad_offset = 30
+            quad_offset = 90
+            var = "rotate 90"
         else:
             quad_offset = (0, 0, 0)
-        print(action)
+            var = "no action"
+        print(f"{action} = {var}")
         return quad_offset, rotate
 
     
@@ -225,7 +264,7 @@ F
         prev_dist = np.linalg.norm(self.info["prev_position"]-self.goal_position)
         # print("current distance from goal: " + str(dist))
         # print("previous distance from goal: " + str(prev_dist))
-       
+    
         return dist, prev_dist
     
     def getRelativeDistance(self):
@@ -241,43 +280,89 @@ F
         r_z = np.linalg.norm(self.info["position"][2]-self.goal_position[2])
 
         rel_dist = np.array([r_x,r_y,r_z], dtype=np.float64)
-        print(rel_dist)
         return rel_dist
     
+    #Punishes the drone for going farther than the original distance from the drone
+    def radius_loss_eq(self, curr_dist_to_target):
+        dist_change = curr_dist_to_target - self.original_distance
+        loss = 25 / (1 + self.original_distance ** 2 * np.exp(-0.5 * dist_change))
+        return loss
+
     def calculateReward(self, chosenAction): #figure out rewards
         done = False
         self.info["goalreached"] = False
         reward = 0
 
-        distance, previous_distance = self.get_distance()
-        reward += (previous_distance - distance) - np.linalg.norm(self.info["prev_position"]-self.info["position"])
+        curr_distance, previous_distance = self.get_distance()
+    
+        reward += (previous_distance - curr_distance) * 10
+        print("original distance from Goal: " + str(self.original_distance))
+        print("current distance from Goal: " + str(curr_distance))
+        
 
-        print("distance from Goal: " + str(distance))
-
-        if distance <= self.goals[self.sub_goal]:
+        if curr_distance <= self.goals[self.sub_goal]:
             print("Level: "+str(self.sub_goal))
             self.sub_goal += 1 
             reward += 20
         
-        if chosenAction == 6: #Dont stay still too long
-            reward += -0.5
+        #Dont stay still too long
+        # if chosenAction == 8: 
+        #     reward += -0.5
+        
+        # if the drone does nothing and is in the same position give them minus 10 (or if the change in distance is very small)
+        # this takes into account both idle action and sometimes drone also just rotates in place for the whole episode
+        tolerance = 0.001
+        if abs(previous_distance - curr_distance) <= tolerance:
+            reward -= 1
+            self.no_movement += 1
+            print(f"current number of idle movements: {self.no_movement}")
+        else:
+            # reset counter to 0
+            self.no_movement = 0 
 
-        if self.info["collision"]:
-            reward = rewardConfig['collided']
-            done = True
+        # if the prev_dist is less then curr_dist, then we got further from the target
+        # and give them a slight penalty to show they are going in the wrong direction
+        if previous_distance < curr_distance:
+            if curr_distance > self.original_distance:
+                print(f"{curr_distance} is greater than {self.original_distance}")
+                reward -= self.radius_loss_eq(curr_distance)
+            else: 
+                reward -= 0.5
 
-        if self.state["relative_distance"][0] < 6 and self.state["relative_distance"][1] < 6:
+        # check drone altimeter to make sure it's not too close or too high up the environment
+        altimeter = self.state["altimeter"][0]
+        if 5.0 <= altimeter <= 25.0:
+            print(f"{altimeter} is within the range.")
+            reward += 1
+        else:
+            print(f"{altimeter} is out the range.")
+            reward -= 0.5
+
+        targetdistance_threshold = 50
+        # if self.state["relative_distance"][0] < 7 and self.state["relative_distance"][1] < 7 and self.state["relative_distance"][1] < 7:
         # if -2 <= self.state["relative_distance"][0] <= 2 and -2 <= self.state["relative_distance"][1] <= 2:
-        # if distance < 2:
+        if curr_distance < 12.0:
         # if self.state["relative_distance"][0] < 2:
-            reward = rewardConfig['goal']
+            reward += 400
             self.info["goalreached"] = True
             print("System: Goal Reached.")
             done = True
-
-        if self.timestep_count > self.max_timestep:
-            print("System: Time Step Limit Reached")
-            reward = rewardConfig['timed']
+        # check if drone has been doing no action for the past 10 actions (Action history)
+        elif self.no_movement == 10:
+            print(f"System: Drone had not moved after {self.no_movement} actions")
+            reward -= 50
+            done = True
+        elif self.info["collision"]:
+            print("System: Drone collision.")
+            reward -= 150
+            done = True
+        elif curr_distance >= self.original_distance + targetdistance_threshold:
+            print("System: Drone is TOO far from target.")
+            reward -= 50
+            done = True
+        elif self.timestep_count > self.max_timestep:
+            print("System: Time Step Limit Reached.")
+            reward -= 50
             done = True
 
         print("Final reward: "+str(reward))
@@ -291,56 +376,61 @@ F
         self.doAction(chosenAction)
         
         # obs = self.getObservation(chosenAction)
+        self.drone.simPause(True)
+
         obsAq = self.getObservation(chosenAction)
         obs = obsAq[0]
-
         # reward, done = self.calculateReward(chosenAction)
         reward, terminated = self.calculateReward(chosenAction)
 
         #  -- Sometimes image bounces over obstacles once collision triggers --
         if terminated:
-           mean1 = np.mean(self.state["image"])
-           mean2 = np.mean(self.info["prev_image"])
+            mean1 = np.mean(self.state["image"])
+            mean2 = np.mean(self.info["prev_image"])
 
-           if mean2 > mean1:
-            self.state["image"] = self.info["prev_image"]
+            if mean2 > mean1:
+                self.state["image"] = self.info["prev_image"]
 
-        info = self.info
+        info = obsAq[1]
+        self.drone.simPause(False)
 
         # return obs, reward, done, info
         return obs, reward, terminated, False, info
 
     def reset(self, seed=None, options=None):
-        if seed is not None:
-            self.seed(seed)
+        super().reset(seed=seed)
         self.timestep_count = 0
         self.sub_goal = 0
 
-        #  -- Randomise all our obstacles --
-        self.randomiseObjects()
-
+        
         #  -- Reset our action history --
         self.state["action_history"] = -1 * np.ones(10, dtype=np.int8)
         self.drone.simPause(False)
         self.startFlight()
         self.drone.simPause(True)
 
+        # reset counter for idle movements
+        self.no_movement = 0
+
         # return self.getObservation(chosenAction=-1), self.info
+        test = self.getObservation(chosenAction=-1)
+    
         return self.getObservation(chosenAction=-1)
     
-    def randomiseObjects(self):
-        for pos in self.VertPos:
-            y = pos[0].position.y_val + np.random.uniform(-3,3)
-            position = Vector3r(pos[0].position.x_val, y, pos[0].position.z_val)
-            pose = Pose(position, self.heading)
-            self.drone.simSetObjectPose(pos[1], pose, True)
-        
-        for pos in self.HorzPos:
-            z = pos[0].position.z_val + np.random.uniform(-3,3)
-            position = Vector3r(pos[0].position.x_val, pos[0].position.y_val, z)
-            heading = Quaternionr(self.orien.x_val, self.orien.y_val , self.orien.z_val, self.orien.w_val) #90 degree rotation
-            pose = Pose(position, heading)
-            self.drone.simSetObjectPose(pos[1], pose, True)
+    def randomiseTarget(self):
+        locpick = random.randint(0,5)
+        target_x = self.target_locations[locpick, 0]
+        target_y = self.target_locations[locpick, 1]
+        target_z = self.target_locations[locpick, 2]
+        print(f"target location randomized: {target_x}, {target_y}, {target_z}")
+        heading = Quaternionr(0, 0, 0, 0)
+        position = Vector3r(target_x, target_y, target_z)
+        pose = Pose(position, heading)
+        self.drone.simSetObjectPose("character_2", pose, True)
+        # update new goal_position for new target location
+        self.goal_position = np.array([target_x, target_y,target_z], dtype=np.float64)
+        self.info["goal_position"] = self.goal_position
+
 
     def startFlight(self):
 
@@ -357,116 +447,56 @@ F
         self.drone.enableApiControl(True)
         self.drone.armDisarm(True) 
 
+        # update self.info["position"] starting point
+        self.info["position"] = np.array([0,ry,rz], dtype=np.float64)
+        print("drone starting position: ")
+        print(self.info["position"])
+        #  -- Randomise target location and set new sub goals target --
+        self.randomiseTarget()
+        self.goals.clear()
+        self.original_distance = 0
+        self.setGoals()
+
         print("System update: Drone has successfully been reset")
-        self.drone.startRecording()
+        # self.drone.startRecording()
         self.drone.moveByVelocityAsync(0, 0, 0, 10).join()
-        self.drone.stopRecording()
+        # self.drone.stopRecording()
         
 
     def getImageObs(self):
-        my_path = "C:/Users/andre/Desktop/ThesisUnReal/TestImages2/"
-        isExist = os.path.exists(my_path)
+        # my_path = "F:/Documents/RLModel_Pics/"
+        # -- set image request --
+        image_request = self.drone.simGetImages([airsim.ImageRequest("front_center", airsim.ImageType.DepthPerspective, True, False), 
+                                                    airsim.ImageRequest("front_center", airsim.ImageType.Scene, False, False)])
+        request = image_request
+        # get depth image
+        depth_img_in_meters = airsim.list_to_2d_float_array(request[0].image_data_float, request[0].width, request[0].height)
+        depth_img_in_meters = depth_img_in_meters.reshape(request[0].height, request[0].width, 1)
+        depth_8bit_lerped = np.interp(depth_img_in_meters, (0, 100), (0, 255))
+        if depth_8bit_lerped.size != (150*150*1):
+            print("Returned bad depth image data, creating dummy array to prevent training from stopping")
+            depth_test = np.zeros(150*150)
+            depth_8bit_lerped = np.reshape(depth_test,(150, 150, 1))
 
-        if not isExist:
-            os.makedirs(my_path)
+        # get rgb image
+        rgb = np.frombuffer(request[1].image_data_uint8, dtype=np.uint8)
+        rgb_2d = np.reshape(rgb, (request[1].height, request[1].width, 3))
+        if rgb_2d.size != (150*150*3):
+            print("Returned bad rgb image data, creating dummy array to prevent training from stopping")
+            rgb_test = np.ones(150*150*3)
+            rgb_2d = np.reshape(rgb_test,(150, 150,3))
+        
+        # get rgb-d image
+        rgb_d = np.concatenate((rgb_2d, depth_8bit_lerped), axis=-1)
 
-        files = glob.glob(my_path + "*")
-        # print(files)
+        # sanity check
+        # airsim.write_png(os.path.normpath(f'{my_path}/imageStacked.png'), rgb_d)
+        return rgb_d
 
-        imagelocation = files[0] + "/images/"
-
-        imageChangedlocation = files[0] + "/imagesChanged/"
-        isExist = os.path.exists(imageChangedlocation)
-        if not isExist:
-            os.makedirs(imageChangedlocation)
-
-        mytime = 0
-        start_time2 = time.time()
-        while(True):
-            time.sleep(0.001)
-            if len(os.listdir(imagelocation)) >= 3:
-                break
-            if len(os.listdir(imagelocation)) < 3:
-                mytime = time.time() - start_time2
-                print("My Time:"+str(mytime))
-                if(mytime > 1):
-                    break
-
-        imageL = glob.glob(imagelocation + "*")
-        # print(imageL)
-        imageL.sort(key=os.path.getmtime)
-
-        num = 0
-        im_final = np.zeros([self.img_height, self.img_width, 1])
-
-        for imL in imageL:
-            im = None
-            while(True):
-                time.sleep(0.002)
-                try:
-                    im = cv2.imread(imL)
-                except:
-                    #time.sleep(0.005)
-                    pass
-                if im is not None:
-                    break
-
-            from PIL import Image
-
-            im = np.expand_dims(im, axis=2)
-            im = np.array(im, dtype=np.float64)
-            img1d = 255 / np.maximum(np.ones(im.shape), im)
-            img2d = np.reshape(img1d, (im.shape[0], im.shape[1]))
-            
-            image = Image.fromarray(img2d)
-            image = image.rotate(180)
-            image = image.transpose(method=Image.Transpose.FLIP_LEFT_RIGHT)
-
-            # image_path = "TestImages"
-            image_path = imageChangedlocation
-
-            im_final = np.array(image.resize((150, 150)).convert("L"))
-            
-            im_final = im_final.reshape([150, 150, 1])
-            airsim.write_png(os.path.normpath(f'{image_path}/imageChanged{num}.png'), im_final)
-            # print(os.path.normpath(f'{image_path}/imageChanged{num}.png'))
-            num+=1
-
-        folder = my_path
-        mytime = 0
-        start_time2 = time.time()
-
-        for filename in os.listdir(folder):
-            file_path = os.path.join(folder, filename)
-            flag = True
-            while(True):
-                try:
-                    flag = True
-                    if os.path.isfile(file_path) or os.path.islink(file_path):
-                        os.unlink(file_path)
-                    elif os.path.isdir(file_path):
-                        shutil.rmtree(file_path)
-                except Exception as e:
-                    #print('Failed to delete %s. Reason: %s' % (file_path, e))
-                    time.sleep(0.001)
-                    flag = False
-                    mytime = time.time() - start_time2
-                    if(mytime > 1):
-                        break
-
-                if(flag):
-                    break
-
-        return im_final
 
     def getObservation(self, chosenAction):
 
-        self.drone.simPause(True)
         image = self.getImageObs()
-        # image_path = "TestImages2"
-        image_path = "C:/Users/andre/Desktop/ThesisUnReal/TestImages2/"
-
-        airsim.write_png(os.path.normpath(f'{image_path}/imageChanged.png'), image)
         self.info["prev_image"] = self.state["image"] 
         self.state["image"] = image
 
@@ -480,7 +510,6 @@ F
         v_z = kinematics.linear_velocity.z_val
         self.state["velocity"] = np.array([v_x,v_y,v_z], dtype=np.float64)
 
-        
 
         self.info["prev_position"] = self.info["position"] #get previous position
 
@@ -497,7 +526,9 @@ F
         ah = np.insert(ah, 0, chosenAction)
         ah = ah[:-1]
         self.state["action_history"] = ah
-    
+
+        get_alt = self.drone.getDistanceSensorData("Distance", "Drone1").distance
+        self.state["altimeter"] = np.array([get_alt], dtype=np.float64)
         # return self.state
         obs = self.state
         info = self.info
