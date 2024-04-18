@@ -106,19 +106,14 @@ model = DQN(
 "MultiInputPolicy",
 env,
 learning_rate=0.01,
-# learning_rate=linear_schedule(1.0),
 verbose=1,
-# batch_size=64, #128 #32
 batch_size=128,
 train_freq=4,
-# target_update_interval=5_000, #5_000
 target_update_interval=4_000,
 learning_starts=2500 ,
 policy_kwargs=policy_kwargs,
 buffer_size=50_000,
-# buffer_size=70_000,
 max_grad_norm=10,
-# exploration_fraction=0.8, #0.1
 exploration_fraction=0.8,
 exploration_final_eps=0.03,
 # device="cuda",
